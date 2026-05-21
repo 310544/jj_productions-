@@ -1,21 +1,26 @@
 import { useEffect, useState } from 'react'
 import GarmentCard from '../components/GarmentCard'
 import SearchBar from '../components/SearchBar'
+import CategoryFilter from '../components/CategoryFilter'
 import { usePrendasStore } from '../store/usePrendasStore'
+import type { Categoria } from '../types'
 
 export default function Inventario() {
   const { prendas, loading, error, fetchPrendas } = usePrendasStore()
   const [search, setSearch] = useState('')
+  const [categoria, setCategoria] = useState<Categoria | null>(null)
 
   useEffect(() => {
     fetchPrendas()
   }, [fetchPrendas])
 
-  const filtered = search
-    ? prendas.filter((p) =>
-        p.codigo.toLowerCase().includes(search.toLowerCase())
-      )
-    : prendas
+  const filtered = prendas.filter((p) => {
+    const matchSearch = search
+      ? p.codigo.toLowerCase().includes(search.toLowerCase())
+      : true
+    const matchCategoria = categoria ? p.categoria === categoria : true
+    return matchSearch && matchCategoria
+  })
 
   const disponibles = prendas.filter((p) => p.estado === 'disponible').length
   const ocupados = prendas.filter((p) => p.estado === 'ocupado').length
@@ -54,6 +59,8 @@ export default function Inventario() {
       </div>
 
       <SearchBar value={search} onChange={setSearch} />
+
+      <CategoryFilter active={categoria} onChange={setCategoria} />
 
       {loading && (
         <p className="text-center text-text-secondary py-12">Cargando...</p>

@@ -1,5 +1,7 @@
 export type EstadoPrenda = 'disponible' | 'ocupado'
 
+export type Categoria = 'Hombre' | 'Mujer' | 'Niño' | 'Niña'
+
 export interface Prenda {
   id: number
   codigo: string
@@ -7,6 +9,7 @@ export interface Prenda {
   imagen_url: string
   estado: EstadoPrenda
   precio: number
+  categoria?: Categoria
 }
 
 export interface Cliente {

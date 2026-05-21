@@ -251,7 +251,7 @@ export default function AgregarPrenda() {
               type="number"
               value={precio}
               onChange={(e) => setPrecio(e.target.value)}
-              placeholder="0.00"
+              placeholder="50.000"
               className="w-full rounded-[12px] pl-11 pr-4 py-3 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-accent/40"
               style={inputStyle}
             />

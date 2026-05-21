@@ -162,7 +162,9 @@ export default function Alquiler() {
     const itemsList = selectedGarments
       .map((g) => `- ${g.codigo}: ${g.nombre}`)
       .join('%0A')
-    const deudaMsg = deuda > 0 ? deuda.toFixed(2) : '0.00'
+    const formatCOP = (n: number) =>
+      n.toLocaleString('es-CO', { style: 'currency', currency: 'COP' })
+    const deudaCOP = formatCOP(deuda > 0 ? deuda : 0)
     const msg =
       `*RentaTraje - Comprobante*%0A%0A` +
       `Cliente: ${customerName.trim()}%0A` +
@@ -170,9 +172,9 @@ export default function Alquiler() {
       `*Prendas:*%0A${itemsList}%0A%0A` +
       `Inicio: ${fechaInicio}%0A` +
       `Devolucion: ${fechaFin}%0A%0A` +
-      `Total: $${parseFloat(total).toFixed(2)}%0A` +
-      `Pagado: $${(parseFloat(pagado) || 0).toFixed(2)}%0A` +
-      `Deuda: $${deudaMsg}`
+      `Total: ${formatCOP(parseFloat(total) || 0)}%0A` +
+      `Pagado: ${formatCOP(parseFloat(pagado) || 0)}%0A` +
+      `Deuda: ${deudaCOP}`
     const phone = customerPhone.trim().replace(/\D/g, '')
     window.open(`https://wa.me/${phone}?text=${msg}`, '_blank')
   }
@@ -458,7 +460,7 @@ export default function Alquiler() {
                 color: 'var(--danger)',
               }}
             >
-              ${deuda.toFixed(2)}
+              {deuda.toLocaleString('es-CO', { style: 'currency', currency: 'COP' })}
             </div>
           </div>
         </div>

@@ -1,6 +1,6 @@
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useThemeStore } from '../store/useThemeStore'
-import { IconSun, IconMoon, IconHanger, IconFileInvoice, IconPlus, IconChartPie } from '@tabler/icons-react'
+import { IconSun, IconMoon, IconFileInvoice, IconPlus, IconChartPie } from '@tabler/icons-react'
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation()
@@ -20,8 +20,14 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         }}
       >
         <div className="flex items-center gap-2">
-          <IconHanger className="w-6 h-6" style={{ color: 'var(--accent)' }} aria-hidden="true" />
-          <h1 className="text-lg font-bold text-text-primary tracking-tight">RentaTraje</h1>
+          <img
+            src="/logo-jj.png.png"
+            alt="RentaTraje"
+            className="h-14 w-auto"
+            style={{
+              filter: 'invert(1) sepia(1) saturate(3) hue-rotate(5deg)',
+            }}
+          />
         </div>
         <button
           onClick={toggle}

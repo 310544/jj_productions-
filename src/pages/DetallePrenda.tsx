@@ -202,7 +202,7 @@ export default function DetallePrenda() {
         </h2>
         {prenda.precio > 0 && (
           <p className="text-sm font-medium mt-1" style={{ color: 'var(--accent)' }}>
-            ${prenda.precio.toFixed(2)} / alquiler
+            ${prenda.precio.toLocaleString('es-CO', { style: 'currency', currency: 'COP' })} / alquiler
           </p>
         )}
       </div>
