@@ -7,7 +7,7 @@ interface PrendasState {
   loading: boolean
   error: string | null
   fetchPrendas: () => Promise<void>
-  agregarPrenda: (prenda: Omit<Prenda, 'id'>) => Promise<void>
+  agregarPrenda: (prenda: Omit<Prenda, 'id'>) => Promise<{ success: boolean; error?: string }>
 }
 
 export const usePrendasStore = create<PrendasState>((set) => ({
@@ -38,8 +38,10 @@ export const usePrendasStore = create<PrendasState>((set) => ({
 
     if (error) {
       set({ error: error.message })
-    } else if (data) {
-      set((state) => ({ prendas: [data, ...state.prendas] }))
+      return { success: false, error: error.message }
     }
+
+    set((state) => ({ prendas: [data, ...state.prendas] }))
+    return { success: true }
   },
 }))

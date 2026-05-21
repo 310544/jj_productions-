@@ -46,10 +46,11 @@ export default function AgregarPrenda() {
     let imagen_url = ''
 
     if (imagen) {
-      const fileName = `${Date.now()}-${imagen.name}`
+      const ext = imagen.name.split('.').pop() || 'jpg'
+      const safeName = `${Date.now()}.${ext}`
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('prendas')
-        .upload(fileName, imagen)
+        .upload(safeName, imagen)
 
       if (uploadError) {
         setError('Error al subir imagen: ' + uploadError.message)
@@ -64,7 +65,7 @@ export default function AgregarPrenda() {
       imagen_url = urlData.publicUrl
     }
 
-    await agregarPrenda({
+    const result = await agregarPrenda({
       codigo: codigo.trim(),
       nombre: `${tipo} - ${descripcion.trim()}`,
       imagen_url,
@@ -73,6 +74,12 @@ export default function AgregarPrenda() {
     })
 
     setSaving(false)
+
+    if (!result.success) {
+      setError(result.error || 'Error al guardar la prenda')
+      return
+    }
+
     navigate('/')
   }
 

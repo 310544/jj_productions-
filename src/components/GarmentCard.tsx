@@ -1,6 +1,5 @@
 import { Link } from 'react-router-dom'
 import type { Prenda } from '../types'
-import { IconX } from '@tabler/icons-react'
 
 interface Props {
   prenda: Prenda
@@ -12,21 +11,16 @@ export default function GarmentCard({ prenda }: Props) {
   return (
     <Link
       to={`/prenda/${prenda.codigo}`}
-      className="rounded-[16px] overflow-hidden relative group"
+      className="rounded-[16px] overflow-hidden flex flex-col p-2"
       style={{
-        background: 'var(--glass-bg)',
-        backdropFilter: 'var(--glass-blur)',
-        WebkitBackdropFilter: 'var(--glass-blur)',
-        border: '1px solid var(--glass-border)',
+        background: '#1a1a1f',
+        border: '1px solid rgba(255,255,255,0.08)',
       }}
     >
+      {/* Recuadro interior con la foto */}
       <div
-        className="aspect-square flex items-center justify-center relative"
-        style={{
-          background: ocupado
-            ? 'var(--danger-bg)'
-            : 'var(--success-bg)',
-        }}
+        className="relative w-full aspect-square overflow-hidden rounded-[12px]"
+        style={{ background: '#111114' }}
       >
         {prenda.imagen_url ? (
           <img
@@ -35,24 +29,16 @@ export default function GarmentCard({ prenda }: Props) {
             className="w-full h-full object-cover"
           />
         ) : (
-          <span className="text-5xl opacity-30">👔</span>
-        )}
-
-        {ocupado && (
-          <div
-            className="absolute inset-0 flex items-center justify-center rounded-[16px]"
-            style={{ background: 'var(--overlay)' }}
-          >
-            <IconX className="w-16 h-16" style={{ color: 'rgba(255,255,255,0.85)' }} aria-hidden="true" />
+          <div className="w-full h-full flex items-center justify-center">
+            <span className="text-5xl opacity-20">👔</span>
           </div>
         )}
 
+        {/* Badge estado */}
         <span
-          className="absolute top-2 left-2 px-2.5 py-0.5 rounded-full text-[11px] font-semibold"
+          className="absolute top-2 left-2 px-2.5 py-0.5 rounded-full text-[10px] font-semibold"
           style={{
-            background: ocupado
-              ? 'var(--danger-bg)'
-              : 'var(--success-bg)',
+            background: ocupado ? 'var(--danger-bg)' : 'var(--success-bg)',
             border: ocupado
               ? '1px solid var(--danger-border)'
               : '1px solid var(--success-border)',
@@ -63,11 +49,18 @@ export default function GarmentCard({ prenda }: Props) {
         </span>
       </div>
 
-      <div className="p-3">
-        <p className="text-xs font-medium text-text-tertiary tracking-wide">
+      {/* Info abajo */}
+      <div className="px-1 pt-2 pb-1 flex flex-col gap-0.5">
+        {/* Código en dorado */}
+        <p
+          className="text-xs font-bold tracking-widest uppercase"
+          style={{ color: 'var(--accent)' }}
+        >
           {prenda.codigo}
         </p>
-        <p className="text-sm font-semibold text-text-primary truncate mt-0.5">
+
+        {/* Nombre */}
+        <p className="text-sm font-semibold truncate" style={{ color: 'var(--text-primary)' }}>
           {prenda.nombre}
         </p>
       </div>
