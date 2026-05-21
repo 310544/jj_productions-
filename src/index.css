@@ -1,0 +1,125 @@
+@import "tailwindcss";
+
+:root {
+  --glass-bg: rgba(255, 255, 255, 0.06);
+  --glass-border: rgba(255, 255, 255, 0.10);
+  --glass-blur: blur(12px);
+  --glass-strong: rgba(255, 255, 255, 0.09);
+
+  --field-bg: rgba(255, 255, 255, 0.07);
+  --field-border: rgba(255, 255, 255, 0.12);
+
+  --accent: #D4A017;
+  --accent-glow: rgba(201, 168, 76, 0.85);
+  --accent-bg: rgba(201, 168, 76, 0.12);
+  --accent-border: rgba(201, 168, 76, 0.3);
+
+  --text-primary: #ffffff;
+  --text-secondary: rgba(255, 255, 255, 0.45);
+  --text-tertiary: rgba(255, 255, 255, 0.30);
+
+  --success: #4ade80;
+  --success-bg: rgba(34, 197, 94, 0.15);
+  --success-border: rgba(34, 197, 94, 0.3);
+
+  --danger: #f87171;
+  --danger-bg: rgba(239, 68, 68, 0.15);
+  --danger-border: rgba(239, 68, 68, 0.3);
+
+  --overlay: rgba(0, 0, 0, 0.55);
+
+  --bg-gradient: linear-gradient(160deg, #0a0a0f 0%, #0d0d14 50%, #0a0f0d 100%);
+
+  --radius-card: 16px;
+  --radius-btn: 12px;
+  --radius-input: 12px;
+  --radius-screen: 38px;
+}
+
+.glass-light {
+  --glass-bg: rgba(0, 0, 0, 0.04);
+  --glass-border: rgba(0, 0, 0, 0.08);
+  --glass-strong: rgba(0, 0, 0, 0.06);
+
+  --field-bg: rgba(0, 0, 0, 0.03);
+  --field-border: rgba(0, 0, 0, 0.10);
+
+  --accent-glow: rgba(170, 130, 40, 0.90);
+  --accent-bg: rgba(201, 168, 76, 0.18);
+  --accent-border: rgba(201, 168, 76, 0.45);
+
+  --text-primary: #1a1a2e;
+  --text-secondary: rgba(0, 0, 0, 0.50);
+  --text-tertiary: rgba(0, 0, 0, 0.35);
+
+  --danger-bg: rgba(239, 68, 68, 0.10);
+  --danger-border: rgba(239, 68, 68, 0.25);
+
+  --bg-gradient: linear-gradient(135deg, #ebe3f7 0%, #dce8f5 40%, #d8f0df 100%);
+}
+
+@theme {
+  --color-glass-bg: var(--glass-bg);
+  --color-glass-border: var(--glass-border);
+  --color-glass-strong: var(--glass-strong);
+  --color-field-bg: var(--field-bg);
+  --color-field-border: var(--field-border);
+  --color-accent: var(--accent);
+  --color-accent-glow: var(--accent-glow);
+  --color-accent-bg: var(--accent-bg);
+  --color-accent-border: var(--accent-border);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-tertiary: var(--text-tertiary);
+  --color-success: var(--success);
+  --color-success-bg: var(--success-bg);
+  --color-success-border: var(--success-border);
+  --color-danger: var(--danger);
+  --color-danger-bg: var(--danger-bg);
+  --color-danger-border: var(--danger-border);
+  --color-overlay: var(--overlay);
+}
+
+* {
+  transition: background-color 0.35s ease, color 0.35s ease, border-color 0.35s ease,
+    backdrop-filter 0.35s ease, box-shadow 0.35s ease;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+.app-wrapper {
+  max-width: 430px;
+  margin: 0 auto;
+  min-height: 100dvh;
+  background: var(--bg-gradient);
+  position: relative;
+}
+
+@media (min-width: 431px) {
+  .app-wrapper {
+    border-radius: var(--radius-screen);
+    margin: 16px auto;
+    min-height: calc(100dvh - 32px);
+    box-shadow: 0 0 80px rgba(0, 0, 0, 0.5);
+    overflow: hidden;
+  }
+
+  .app-wrapper::before {
+    content: '';
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 300px;
+    height: 150px;
+    background: radial-gradient(ellipse, rgba(201, 168, 76, 0.15) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 10;
+  }
+}
