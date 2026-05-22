@@ -3,15 +3,16 @@ import { supabase } from '../lib/supabase'
 import type { Prenda } from '../types'
 import {
   IconX, IconUser, IconPhone, IconCalendar,
-  IconCheck, IconAlertTriangle, IconTrash,
+  IconCheck, IconAlertTriangle, IconTrash, IconArrowBack,
 } from '@tabler/icons-react'
 
-interface RentalInfo {
+interface RentalDetail {
+  rental_id: number
   customer_name: string
   customer_phone: string
   fecha_inicio: string
   fecha_fin: string
-  rental_id: number
+  estado: string
 }
 
 interface Props {
@@ -22,76 +23,88 @@ interface Props {
 
 export default function GarmentModal({ prenda: initialPrenda, onClose, onDelete }: Props) {
   const [prenda, setPrenda] = useState(initialPrenda)
-  const [rentalInfo, setRentalInfo] = useState<RentalInfo | null>(null)
-  const [loadingRental, setLoadingRental] = useState(false)
-  const [updating, setUpdating] = useState(false)
+  const [rentals, setRentals] = useState<RentalDetail[]>([])
+  const [loadingRentals, setLoadingRentals] = useState(false)
+  const [returningId, setReturningId] = useState<number | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     setPrenda(initialPrenda)
     setError(null)
-    setRentalInfo(null)
-
-    if (initialPrenda.estado === 'ocupado') {
-      fetchRentalInfo(initialPrenda.id)
-    }
+    fetchRentals(initialPrenda.id)
   }, [initialPrenda])
 
-  async function fetchRentalInfo(garmentId: number) {
-    setLoadingRental(true)
+  async function fetchRentals(garmentId: number) {
+    setLoadingRentals(true)
+
     const { data: items } = await supabase
       .from('rental_items')
-      .select('rental_id')
+      .select('rental_id, rentals!inner(id, fecha_inicio, fecha_fin, customer_id, estado)')
       .eq('garment_id', garmentId)
+      .order('fecha_inicio', { referencedTable: 'rentals', ascending: false })
 
-    if (items && items.length > 0) {
-      const rentalIds = items.map((i) => i.rental_id)
+    if (!items || items.length === 0) {
+      setRentals([])
+      setLoadingRentals(false)
+      return
+    }
 
-      const { data: rentals } = await supabase
-        .from('rentals')
-        .select('id, fecha_inicio, fecha_fin, customer_id')
-        .in('id', rentalIds)
-        .eq('estado', 'activo')
-        .limit(1)
+    const detalles: RentalDetail[] = []
+    for (const item of items) {
+      const rental = Array.isArray(item.rentals) ? item.rentals[0] : item.rentals
+      if (!rental) continue
+
+      const { data: customer } = await supabase
+        .from('customers')
+        .select('nombre, telefono')
+        .eq('id', rental.customer_id)
         .single()
 
-      if (rentals) {
-        const { data: customer } = await supabase
-          .from('customers')
-          .select('nombre, telefono')
-          .eq('id', rentals.customer_id)
-          .single()
-
-        setRentalInfo({
-          customer_name: customer?.nombre || '—',
-          customer_phone: customer?.telefono || '—',
-          fecha_inicio: rentals.fecha_inicio,
-          fecha_fin: rentals.fecha_fin,
-          rental_id: rentals.id,
-        })
-      }
+      detalles.push({
+        rental_id: rental.id,
+        customer_name: customer?.nombre || '—',
+        customer_phone: customer?.telefono || '—',
+        fecha_inicio: rental.fecha_inicio,
+        fecha_fin: rental.fecha_fin,
+        estado: rental.estado,
+      })
     }
-    setLoadingRental(false)
+
+    setRentals(detalles)
+    setLoadingRentals(false)
   }
 
-  async function handleMarcarDisponible() {
-    if (!prenda || !rentalInfo) return
-    setUpdating(true)
+  async function handleDevolver(rental: RentalDetail) {
+    if (!window.confirm(`Devolver prenda de "${rental.customer_name}"?`)) return
 
-    await supabase
-      .from('garments')
-      .update({ estado: 'disponible' })
-      .eq('id', prenda.id)
+    setReturningId(rental.rental_id)
+    setError(null)
 
     await supabase
       .from('rentals')
       .update({ estado: 'finalizado' })
-      .eq('id', rentalInfo.rental_id)
+      .eq('id', rental.rental_id)
 
-    setPrenda({ ...prenda, estado: 'disponible' })
-    setRentalInfo(null)
-    setUpdating(false)
+    // Verificar si quedan alquileres activos
+    const { data: activos } = await supabase
+      .from('rental_items')
+      .select('rental_id, rentals!inner(estado)')
+      .eq('garment_id', prenda.id)
+      .filter('rentals.estado', 'eq', 'activo')
+
+    const quedanActivos = activos && activos.length > 0
+
+    if (!quedanActivos) {
+      await supabase
+        .from('garments')
+        .update({ estado: 'disponible' })
+        .eq('id', prenda.id)
+      setPrenda({ ...prenda, estado: 'disponible' })
+    }
+
+    setReturningId(null)
+    fetchRentals(prenda.id)
   }
 
   async function handleDelete() {
@@ -106,10 +119,9 @@ export default function GarmentModal({ prenda: initialPrenda, onClose, onDelete 
         const url = new URL(prenda.imagen_url)
         const path = url.pathname.split('/').slice(2).join('/')
         await supabase.storage.from('prendas').remove([path])
-      } catch { /* continuar aunque falle el borrado de imagen */ }
+      } catch { /* continuar */ }
     }
 
-    // Borrar referencias en rental_items primero
     await supabase
       .from('rental_items')
       .delete()
@@ -129,7 +141,12 @@ export default function GarmentModal({ prenda: initialPrenda, onClose, onDelete 
     onDelete()
   }
 
-  const fechaVencida = rentalInfo && new Date(rentalInfo.fecha_fin) < new Date()
+  const cardStyle = {
+    background: 'var(--glass-bg)',
+    backdropFilter: 'var(--glass-blur)',
+    WebkitBackdropFilter: 'var(--glass-blur)',
+    border: '1px solid var(--glass-border)',
+  }
 
   return (
     <div
@@ -138,7 +155,7 @@ export default function GarmentModal({ prenda: initialPrenda, onClose, onDelete 
       onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
     >
       <div
-        className="w-full max-w-[380px] max-h-[85vh] overflow-y-auto rounded-[28px] px-4 pt-5 pb-6 space-y-4"
+        className="w-full max-w-[380px] md:max-w-[500px] max-h-[85vh] overflow-y-auto rounded-[28px] px-4 pt-5 pb-6 space-y-4"
         style={{
           background: 'rgba(15,15,20,0.75)',
           backdropFilter: 'blur(40px) saturate(180%)',
@@ -149,7 +166,7 @@ export default function GarmentModal({ prenda: initialPrenda, onClose, onDelete 
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Cerrar */}
+        {/* Header sticky */}
         <div className="flex items-center justify-between sticky top-0 z-10 pt-3 -mt-5 pb-2">
           <button
             onClick={onClose}
@@ -180,31 +197,19 @@ export default function GarmentModal({ prenda: initialPrenda, onClose, onDelete 
         {/* Imagen */}
         <div
           className="aspect-square rounded-[16px] flex items-center justify-center relative overflow-hidden"
-          style={{
-            background: 'var(--glass-bg)',
-            border: '1px solid var(--glass-border)',
-          }}
+          style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)' }}
         >
           {prenda.imagen_url ? (
-            <img
-              src={prenda.imagen_url}
-              alt={prenda.nombre}
-              className="w-full h-full object-cover"
-              loading="eager"
-            />
+            <img src={prenda.imagen_url} alt={prenda.nombre} className="w-full h-full object-cover" loading="eager" />
           ) : (
             <span className="text-7xl opacity-30">👔</span>
           )}
         </div>
 
-        {/* Info */}
+        {/* Info basica */}
         <div>
-          <p className="text-sm font-medium text-text-tertiary tracking-wide">
-            {prenda.codigo}
-          </p>
-          <h2 className="text-xl font-bold text-text-primary mt-1">
-            {prenda.nombre}
-          </h2>
+          <p className="text-sm font-medium text-text-tertiary tracking-wide">{prenda.codigo}</p>
+          <h2 className="text-xl font-bold text-text-primary mt-1">{prenda.nombre}</h2>
           {prenda.precio > 0 && (
             <p className="text-sm font-medium mt-1" style={{ color: 'var(--accent)' }}>
               {prenda.precio.toLocaleString('es-CO', { style: 'currency', currency: 'COP' })} / alquiler
@@ -212,96 +217,93 @@ export default function GarmentModal({ prenda: initialPrenda, onClose, onDelete 
           )}
         </div>
 
-        {/* Disponible */}
-        {prenda.estado === 'disponible' && (
-          <div
-            className="rounded-[16px] p-5 text-center"
-            style={{
-              background: 'var(--glass-bg)',
-              backdropFilter: 'var(--glass-blur)',
-              WebkitBackdropFilter: 'var(--glass-blur)',
-              border: '1px solid var(--glass-border)',
-            }}
-          >
+        {/* Sin alquileres */}
+        {!loadingRentals && rentals.length === 0 && (
+          <div className="rounded-[16px] p-5 text-center" style={cardStyle}>
             <p className="text-4xl mb-2 opacity-30">✅</p>
-            <p className="text-text-secondary font-medium">Prenda disponible</p>
+            <p className="text-text-secondary font-medium">Sin alquileres registrados</p>
             <p className="text-text-tertiary text-sm mt-1">Lista para alquilar</p>
           </div>
         )}
 
-        {/* Alquiler activo */}
-        {loadingRental && (
-          <p className="text-center text-text-secondary py-4">Cargando alquiler...</p>
+        {/* Lista de alquileres */}
+        {loadingRentals && (
+          <p className="text-center text-text-secondary py-4">Cargando alquileres...</p>
         )}
 
-        {rentalInfo && (
-          <div
-            className="rounded-[16px] p-5 space-y-4"
-            style={{
-              background: 'var(--glass-bg)',
-              backdropFilter: 'var(--glass-blur)',
-              WebkitBackdropFilter: 'var(--glass-blur)',
-              border: '1px solid var(--glass-border)',
-            }}
-          >
-            <h3 className="font-semibold text-text-primary">Alquiler activo</h3>
+        {!loadingRentals && rentals.map((r) => {
+          const vencido = new Date(r.fecha_fin) < new Date()
+          const activo = r.estado === 'activo'
 
-            <div className="space-y-3">
-              <div className="flex items-center gap-3">
-                <IconUser className="w-5 h-5 text-text-secondary shrink-0" aria-hidden="true" />
-                <p className="text-sm font-medium text-text-primary">{rentalInfo.customer_name}</p>
-              </div>
-              <div className="flex items-center gap-3">
-                <IconPhone className="w-5 h-5 text-text-secondary shrink-0" aria-hidden="true" />
-                <p className="text-sm text-text-primary">{rentalInfo.customer_phone}</p>
-              </div>
-              <div className="flex items-center gap-3">
-                <IconCalendar className="w-5 h-5 text-text-secondary shrink-0" aria-hidden="true" />
-                <div className="flex gap-2 text-sm">
-                  <span className="text-text-primary">
-                    {new Date(rentalInfo.fecha_inicio).toLocaleDateString('es-AR')}
+          return (
+            <div key={r.rental_id} className="rounded-[16px] p-4 space-y-3" style={cardStyle}>
+              <div className="flex items-center justify-between">
+                <span
+                  className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold"
+                  style={{
+                    background: activo
+                      ? 'rgba(255,60,60,0.12)'
+                      : 'rgba(255,255,255,0.06)',
+                    color: activo ? '#ff3b3b' : 'var(--text-secondary)',
+                  }}
+                >
+                  {activo ? 'Activo' : 'Finalizado'}
+                </span>
+                {vencido && activo && (
+                  <span className="text-[10px] font-semibold" style={{ color: '#ff3b3b' }}>
+                    Vencido
                   </span>
-                  <span className="text-text-tertiary">→</span>
-                  <span
-                    className="font-medium"
-                    style={{ color: fechaVencida ? 'var(--danger)' : 'var(--text-primary)' }}
-                  >
-                    {new Date(rentalInfo.fecha_fin).toLocaleDateString('es-AR')}
-                  </span>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <IconUser className="w-4 h-4 text-text-secondary shrink-0" aria-hidden="true" />
+                  <p className="text-sm font-medium text-text-primary">{r.customer_name}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <IconPhone className="w-4 h-4 text-text-secondary shrink-0" aria-hidden="true" />
+                  <p className="text-sm text-text-primary">{r.customer_phone}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <IconCalendar className="w-4 h-4 text-text-secondary shrink-0" aria-hidden="true" />
+                  <div className="flex gap-2 text-sm">
+                    <span className="text-text-primary">
+                      {new Date(r.fecha_inicio).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })}
+                    </span>
+                    <span className="text-text-tertiary">→</span>
+                    <span className="font-medium" style={{ color: vencido && activo ? '#ff3b3b' : 'var(--text-primary)' }}>
+                      {new Date(r.fecha_fin).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })}
+                    </span>
+                  </div>
                 </div>
               </div>
-              {fechaVencida && (
-                <div className="flex items-center gap-2 text-sm" style={{ color: 'var(--danger)' }}>
-                  <IconAlertTriangle className="w-4 h-4" aria-hidden="true" />
-                  <span className="font-medium">Fecha de devolucion vencida</span>
-                </div>
+
+              {activo && (
+                <button
+                  onClick={() => handleDevolver(r)}
+                  disabled={returningId === r.rental_id}
+                  className="w-full py-2.5 text-sm font-semibold rounded-[12px] transition-all hover:brightness-125 disabled:opacity-50 flex items-center justify-center gap-2"
+                  style={{
+                    border: '1px solid var(--success-border)',
+                    color: 'var(--success)',
+                    background: 'var(--success-bg)',
+                  }}
+                >
+                  <IconArrowBack className="w-4 h-4" aria-hidden="true" />
+                  {returningId === r.rental_id ? 'Devolviendo...' : 'Registrar devolucion'}
+                </button>
               )}
             </div>
-
-            <button
-              onClick={handleMarcarDisponible}
-              disabled={updating}
-              className="w-full py-3 font-semibold rounded-[14px] transition-all hover:brightness-125 disabled:opacity-50 flex items-center justify-center gap-2"
-              style={{
-                border: '1px solid var(--success-border)',
-                color: 'var(--success)',
-                background: 'var(--success-bg)',
-              }}
-            >
-              <IconCheck className="w-5 h-5" aria-hidden="true" />
-              {updating ? 'Actualizando...' : 'Marcar como disponible'}
-            </button>
-          </div>
-        )}
+          )
+        })}
 
         {/* Error */}
         {error && (
-          <p className="text-sm text-center font-medium" style={{ color: 'var(--danger)' }}>
-            {error}
-          </p>
+          <p className="text-sm text-center font-medium" style={{ color: 'var(--danger)' }}>{error}</p>
         )}
 
-        {/* Eliminar */}
+        {/* Eliminar prenda */}
         <button
           onClick={handleDelete}
           disabled={deleting}
@@ -316,9 +318,7 @@ export default function GarmentModal({ prenda: initialPrenda, onClose, onDelete 
           {deleting ? 'Eliminando...' : 'Eliminar prenda'}
         </button>
 
-        <style>{`
-          div::-webkit-scrollbar { display: none; }
-        `}</style>
+        <style>{`div::-webkit-scrollbar { display: none; }`}</style>
       </div>
     </div>
   )

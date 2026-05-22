@@ -5,8 +5,14 @@ interface Props {
   onSelect: (prenda: Prenda) => void
 }
 
+function formatFecha(iso?: string) {
+  if (!iso) return ''
+  return new Date(iso).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })
+}
+
 export default function GarmentCard({ prenda, onSelect }: Props) {
   const ocupado = prenda.estado === 'ocupado'
+  const fechas = prenda.fechas_ocupado || []
 
   return (
     <button
@@ -36,12 +42,23 @@ export default function GarmentCard({ prenda, onSelect }: Props) {
         )}
 
         {ocupado && (
-          <div className="absolute inset-0 rounded-[12px] overflow-hidden" style={{ background: 'rgba(0,0,0,0.55)' }}>
+          <div className="absolute inset-0 rounded-[12px] overflow-hidden flex flex-col items-center justify-center gap-1.5" style={{ background: 'rgba(0,0,0,0.55)' }}>
+            {/* Todas las fechas de alquiler */}
+            {fechas.map((f, i) => (
+              <p key={i} className="text-[10px] font-semibold px-2 py-0.5 rounded-full relative z-10" style={{
+                background: 'rgba(255,60,60,0.2)',
+                backdropFilter: 'blur(8px)',
+                WebkitBackdropFilter: 'blur(8px)',
+                color: '#ff3b3b',
+              }}>
+                {formatFecha(f.fecha_inicio)} - {formatFecha(f.fecha_fin)}
+              </p>
+            ))}
             {/* Línea diagonal \ de esquina superior-izq a inferior-der */}
             <span
               className="absolute h-[4px] w-[141%] rounded-sm"
               style={{
-                background: 'rgba(255,255,255,0.8)',
+                background: 'rgba(255,255,255,0.35)',
                 top: '50%',
                 left: '50%',
                 transform: 'translate(-50%, -50%) rotate(45deg)',
@@ -51,7 +68,7 @@ export default function GarmentCard({ prenda, onSelect }: Props) {
             <span
               className="absolute h-[4px] w-[141%] rounded-sm"
               style={{
-                background: 'rgba(255,255,255,0.8)',
+                background: 'rgba(255,255,255,0.35)',
                 top: '50%',
                 left: '50%',
                 transform: 'translate(-50%, -50%) rotate(-45deg)',

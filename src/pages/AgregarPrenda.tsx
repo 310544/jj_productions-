@@ -11,7 +11,12 @@ import {
 const TIPOS = ['Traje', 'Camisa', 'Pantalon']
 const CATEGORIAS: Categoria[] = ['Hombre', 'Mujer', 'Niño', 'Niña']
 
-export default function AgregarPrenda() {
+interface Props {
+  inPopup?: boolean
+  onClose?: () => void
+}
+
+export default function AgregarPrenda({ inPopup, onClose }: Props = {}) {
   const navigate = useNavigate()
   const { agregarPrenda } = usePrendasStore()
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -115,7 +120,11 @@ export default function AgregarPrenda() {
       return
     }
 
-    navigate('/')
+    if (inPopup && onClose) {
+      onClose()
+    } else {
+      navigate('/')
+    }
   }
 
   const inputStyle = {
@@ -125,20 +134,25 @@ export default function AgregarPrenda() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center gap-3">
-        <button
-          onClick={() => navigate(-1)}
-          className="w-10 h-10 flex items-center justify-center rounded-full hover:brightness-125 transition-all"
-          style={{
-            background: 'var(--glass-strong)',
-            border: '1px solid var(--glass-border)',
-          }}
-          aria-label="Volver"
-        >
-          <IconArrowLeft className="w-5 h-5" style={{ color: 'var(--accent)' }} aria-hidden="true" />
-        </button>
-        <h2 className="text-lg font-bold text-text-primary">Agregar prenda</h2>
-      </div>
+      {!inPopup && (
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => navigate(-1)}
+            className="w-10 h-10 flex items-center justify-center rounded-full hover:brightness-125 transition-all"
+            style={{
+              background: 'var(--glass-strong)',
+              border: '1px solid var(--glass-border)',
+            }}
+            aria-label="Volver"
+          >
+            <IconArrowLeft className="w-5 h-5" style={{ color: 'var(--accent)' }} aria-hidden="true" />
+          </button>
+          <h2 className="text-lg font-bold text-text-primary">Agregar prenda</h2>
+        </div>
+      )}
+      {inPopup && (
+        <h2 className="text-lg font-bold text-text-primary mb-5">Agregar prenda</h2>
+      )}
 
       <div
         onClick={() => fileInputRef.current?.click()}
@@ -225,7 +239,7 @@ export default function AgregarPrenda() {
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); setOpenTipo(!openTipo); setOpenCategoria(false) }}
-              className="w-full rounded-[12px] px-4 py-3 text-sm text-left flex items-center justify-between focus:outline-none focus:ring-2 focus:ring-accent/40"
+              className="w-full rounded-[12px] px-4 py-3 text-base text-left flex items-center justify-between focus:outline-none focus:ring-2 focus:ring-accent/40"
               style={{
                 ...inputStyle,
                 color: tipo ? 'var(--text-primary)' : 'var(--text-tertiary)',
@@ -278,7 +292,7 @@ export default function AgregarPrenda() {
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); setOpenCategoria(!openCategoria); setOpenTipo(false) }}
-              className="w-full rounded-[12px] px-4 py-3 text-sm text-left flex items-center justify-between focus:outline-none focus:ring-2 focus:ring-accent/40"
+              className="w-full rounded-[12px] px-4 py-3 text-base text-left flex items-center justify-between focus:outline-none focus:ring-2 focus:ring-accent/40"
               style={{
                 ...inputStyle,
                 color: categoria ? 'var(--text-primary)' : 'var(--text-tertiary)',
@@ -337,7 +351,7 @@ export default function AgregarPrenda() {
               value={codigo}
               onChange={(e) => setCodigo(e.target.value)}
               placeholder="Ej: TRJ-001"
-              className="w-full rounded-[12px] pl-11 pr-4 py-3 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-accent/40"
+              className="w-full rounded-[12px] pl-11 pr-4 py-3 text-base text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-accent/40"
               style={inputStyle}
             />
           </div>
@@ -352,7 +366,7 @@ export default function AgregarPrenda() {
             value={descripcion}
             onChange={(e) => setDescripcion(e.target.value)}
             placeholder="Ej: Azul marino"
-            className="w-full rounded-[12px] px-4 py-3 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-accent/40"
+            className="w-full rounded-[12px] px-4 py-3 text-base text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-accent/40"
             style={inputStyle}
           />
         </div>
@@ -372,7 +386,7 @@ export default function AgregarPrenda() {
               value={precio}
               onChange={(e) => setPrecio(e.target.value)}
               placeholder="50.000"
-              className="w-full rounded-[12px] pl-11 pr-4 py-3 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-accent/40"
+              className="w-full rounded-[12px] pl-11 pr-4 py-3 text-base text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-accent/40"
               style={inputStyle}
             />
           </div>

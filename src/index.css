@@ -93,6 +93,7 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
+  background: #000;
 }
 
 .app-wrapper {
@@ -103,7 +104,16 @@ body {
   position: relative;
 }
 
-@media (min-width: 431px) {
+@media (min-width: 768px) {
+  .app-wrapper {
+    max-width: 100%;
+    margin: 0;
+    border-radius: 0;
+    min-height: 100dvh;
+  }
+}
+
+@media (min-width: 431px) and (max-width: 767px) {
   .app-wrapper {
     border-radius: var(--radius-screen);
     margin: 16px auto;

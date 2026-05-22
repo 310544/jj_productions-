@@ -35,7 +35,7 @@ export default function SearchBar({ value, onChange }: Props) {
           placeholder="Buscar por codigo..."
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="w-full pl-11 pr-4 py-3 rounded-full text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-accent/40"
+          className="w-full pl-11 pr-4 py-3 rounded-full text-base text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-accent/40"
           style={{
             background: 'rgba(255,255,255,0.05)',
             border: '1px solid rgba(255,255,255,0.09)',

@@ -10,6 +10,7 @@ export interface Prenda {
   estado: EstadoPrenda
   precio: number
   categoria?: Categoria
+  fechas_ocupado?: { fecha_inicio: string; fecha_fin: string }[]
 }
 
 export interface Cliente {

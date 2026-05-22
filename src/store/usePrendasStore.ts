@@ -19,16 +19,49 @@ export const usePrendasStore = create<PrendasState>((set, get) => ({
   fetchPrendas: async () => {
     if (get().prendas.length > 0) return
     set({ loading: true, error: null })
-    const { data, error } = await supabase
+    const { data: garments, error } = await supabase
       .from('garments')
       .select('*')
       .order('created_at', { ascending: false })
 
     if (error) {
       set({ loading: false, error: error.message })
-    } else {
-      set({ prendas: data || [], loading: false })
+      return
     }
+
+    if (!garments || garments.length === 0) {
+      set({ prendas: [], loading: false })
+      return
+    }
+
+    // Obtener TODAS las fechas de alquileres activos para cada prenda
+    const { data: rentals } = await supabase
+      .from('rental_items')
+      .select('garment_id, rentals!inner(fecha_inicio, fecha_fin)')
+      .in('garment_id', garments.map((g: Prenda) => g.id))
+      .filter('rentals.estado', 'eq', 'activo')
+
+    const fechasPorId: Record<number, { fecha_inicio: string; fecha_fin: string }[]> = {}
+    if (rentals) {
+      for (const r of rentals) {
+        const rental = Array.isArray(r.rentals) ? r.rentals[0] : r.rentals
+        if (rental) {
+          if (!fechasPorId[r.garment_id]) fechasPorId[r.garment_id] = []
+          fechasPorId[r.garment_id].push({
+            fecha_inicio: rental.fecha_inicio,
+            fecha_fin: rental.fecha_fin,
+          })
+        }
+      }
+    }
+
+    const prendas = garments.map((g: Prenda) => ({
+      ...g,
+      fechas_ocupado: fechasPorId[g.id] || undefined,
+      ...(fechasPorId[g.id]?.[0] || {}),
+    }))
+
+    set({ prendas, loading: false })
   },
 
   agregarPrenda: async (prenda) => {

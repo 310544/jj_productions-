@@ -4,10 +4,16 @@ import type { Prenda } from '../types'
 import {
   IconUser, IconPhone, IconCalendar, IconX, IconPlus,
   IconSearch, IconBrandWhatsapp, IconHanger, IconArrowLeft, IconCheck,
+  IconAlertTriangle,
 } from '@tabler/icons-react'
 import { useNavigate } from 'react-router-dom'
 
-export default function Alquiler() {
+interface Props {
+  inPopup?: boolean
+  onClose?: () => void
+}
+
+export default function Alquiler({ inPopup, onClose }: Props = {}) {
   const navigate = useNavigate()
 
   const [customerName, setCustomerName] = useState('')
@@ -25,16 +31,58 @@ export default function Alquiler() {
   const [error, setError] = useState<string | null>(null)
   const [showPopup, setShowPopup] = useState(false)
 
+  const [conflictingGarments, setConflictingGarments] = useState<Set<number>>(new Set())
+  const [showConflictPopup, setShowConflictPopup] = useState(false)
+  const [conflictMessage, setConflictMessage] = useState('')
+
   useEffect(() => {
     supabase
       .from('garments')
       .select('*')
-      .eq('estado', 'disponible')
       .order('created_at', { ascending: false })
       .then(({ data }) => {
         if (data) setAllGarments(data)
       })
   }, [])
+
+  // Revisar conflictos de fecha cada vez que cambian las fechas
+  useEffect(() => {
+    if (!fechaInicio || !fechaFin) return
+    async function checkConflicts() {
+      const { data: items } = await supabase
+        .from('rental_items')
+        .select('garment_id, rentals!inner(fecha_inicio, fecha_fin, estado)')
+        .filter('rentals.estado', 'eq', 'activo')
+        .filter('rentals.fecha_inicio', 'lte', fechaFin)
+        .filter('rentals.fecha_fin', 'gte', fechaInicio)
+
+      const ids = new Set<number>()
+      if (items) {
+        for (const item of items) {
+          ids.add(item.garment_id)
+        }
+      }
+      setConflictingGarments(ids)
+    }
+    checkConflicts()
+  }, [fechaInicio, fechaFin])
+
+  function isAvailableForDates(g: Prenda) {
+    return !conflictingGarments.has(g.id)
+  }
+
+  // Mostrar popup si alguna prenda ya seleccionada entra en conflicto con las fechas
+  useEffect(() => {
+    const conflictIds = selectedGarments
+      .filter((g) => conflictingGarments.has(g.id))
+      .map((g) => g.codigo)
+    if (conflictIds.length > 0) {
+      setConflictMessage(`Traje ya alquilado en esa fecha: ${conflictIds.join(', ')}`)
+      setShowConflictPopup(true)
+      // Quitar las prendas en conflicto de la seleccion
+      setSelectedGarments((prev) => prev.filter((g) => !conflictingGarments.has(g.id)))
+    }
+  }, [conflictingGarments])
 
   function handleSearch(value: string) {
     setSearchQuery(value)
@@ -44,7 +92,8 @@ export default function Alquiler() {
         allGarments.filter(
           (g) =>
             g.codigo.toLowerCase().includes(q) &&
-            !selectedGarments.find((s) => s.id === g.id)
+            !selectedGarments.find((s) => s.id === g.id) &&
+            isAvailableForDates(g)
         )
       )
     } else {
@@ -101,6 +150,27 @@ export default function Alquiler() {
 
     setSaving(true)
     setError(null)
+
+    // Verificar que ninguna prenda se haya rentado en estas fechas mientras tanto
+    const garmentIds = selectedGarments.map((g) => g.id)
+    const { data: conflicts } = await supabase
+      .from('rental_items')
+      .select('garment_id, rentals!inner(fecha_inicio, fecha_fin, estado)')
+      .in('garment_id', garmentIds)
+      .filter('rentals.estado', 'eq', 'activo')
+      .filter('rentals.fecha_inicio', 'lte', fechaFin)
+      .filter('rentals.fecha_fin', 'gte', fechaInicio)
+
+    if (conflicts && conflicts.length > 0) {
+      const ids = conflicts.map((c: any) => c.garment_id)
+      const prendasConflicto = selectedGarments
+        .filter((g) => ids.includes(g.id))
+        .map((g) => g.codigo)
+        .join(', ')
+      setError(`Conflicto de fechas: ${prendasConflicto} ya estan alquiladas en ese rango`)
+      setSaving(false)
+      return
+    }
 
     let customerId: number
     const { data: existingCustomer } = await supabase
@@ -318,21 +388,26 @@ export default function Alquiler() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center gap-3">
-        <button
-          onClick={() => navigate(-1)}
-          className="w-10 h-10 flex items-center justify-center rounded-full hover:brightness-125 transition-all"
-          style={{
-            background: 'var(--glass-strong)',
-            border: '1px solid var(--glass-border)',
-            color: 'var(--text-secondary)',
-          }}
-          aria-label="Volver"
-        >
-          <IconArrowLeft className="w-5 h-5" aria-hidden="true" />
-        </button>
-        <h2 className="text-lg font-bold text-text-primary">Factura / Alquiler</h2>
-      </div>
+      {!inPopup && (
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => navigate(-1)}
+            className="w-10 h-10 flex items-center justify-center rounded-full hover:brightness-125 transition-all"
+            style={{
+              background: 'var(--glass-strong)',
+              border: '1px solid var(--glass-border)',
+              color: 'var(--text-secondary)',
+            }}
+            aria-label="Volver"
+          >
+            <IconArrowLeft className="w-5 h-5" aria-hidden="true" />
+          </button>
+          <h2 className="text-lg font-bold text-text-primary">Factura / Alquiler</h2>
+        </div>
+      )}
+      {inPopup && (
+        <h2 className="text-lg font-bold text-text-primary mb-5">Factura / Alquiler</h2>
+      )}
 
       {/* Cliente */}
       <div className="space-y-3">
@@ -350,7 +425,7 @@ export default function Alquiler() {
               value={customerName}
               onChange={(e) => setCustomerName(e.target.value)}
               placeholder="Nombre completo"
-              className="w-full rounded-[12px] pl-11 pr-4 py-3 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-accent/40"
+              className="w-full rounded-[12px] pl-11 pr-4 py-3 text-base text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-accent/40"
               style={inputStyle}
             />
           </div>
@@ -370,7 +445,7 @@ export default function Alquiler() {
               value={customerPhone}
               onChange={(e) => setCustomerPhone(e.target.value)}
               placeholder="+54 11 1234-5678"
-              className="w-full rounded-[12px] pl-11 pr-4 py-3 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-accent/40"
+              className="w-full rounded-[12px] pl-11 pr-4 py-3 text-base text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-accent/40"
               style={inputStyle}
             />
           </div>
@@ -555,6 +630,51 @@ export default function Alquiler() {
         {saving ? 'Guardando...' : 'Registrar alquiler'}
       </button>
 
+      {/* Popup de conflicto de fechas */}
+      {showConflictPopup && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: 'rgba(0,0,0,0.6)' }}
+          onClick={() => setShowConflictPopup(false)}
+        >
+          <div
+            className="w-full max-w-[340px] rounded-[24px] px-5 pt-6 pb-5 text-center space-y-4"
+            style={{
+              background: 'rgba(15,15,20,0.85)',
+              backdropFilter: 'blur(30px)',
+              WebkitBackdropFilter: 'blur(30px)',
+              border: '1px solid rgba(255,255,255,0.10)',
+              boxShadow: '0 20px 60px rgba(0,0,0,0.6)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              className="w-12 h-12 rounded-full flex items-center justify-center mx-auto"
+              style={{
+                background: 'rgba(255,60,60,0.15)',
+                border: '1px solid rgba(255,60,60,0.3)',
+              }}
+            >
+              <IconAlertTriangle className="w-6 h-6" style={{ color: '#ff3b3b' }} aria-hidden="true" />
+            </div>
+            <p className="text-sm font-medium" style={{ color: '#ff3b3b' }}>
+              {conflictMessage}
+            </p>
+            <button
+              onClick={() => setShowConflictPopup(false)}
+              className="w-full py-2.5 text-sm font-semibold rounded-[12px] transition-all hover:brightness-125"
+              style={{
+                background: 'var(--glass-strong)',
+                border: '1px solid var(--glass-border)',
+                color: 'var(--text-primary)',
+              }}
+            >
+              Entendido
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Popup de exito */}
       {showPopup && (
         <div
@@ -599,7 +719,8 @@ export default function Alquiler() {
             <button
               onClick={() => {
                 setShowPopup(false)
-                navigate('/')
+                if (inPopup && onClose) onClose()
+                else navigate('/')
               }}
               className="w-full py-3.5 font-semibold rounded-[14px] transition-all hover:brightness-125"
               style={{
