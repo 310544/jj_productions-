@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase'
 import type { Prenda } from '../types'
 import {
   IconX, IconUser, IconPhone, IconCalendar,
-  IconCheck, IconAlertTriangle, IconTrash, IconArrowBack,
+  IconTrash, IconArrowBack,
 } from '@tabler/icons-react'
 
 interface RentalDetail {
