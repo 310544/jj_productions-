@@ -109,6 +109,12 @@ export default function GarmentModal({ prenda: initialPrenda, onClose, onDelete 
       } catch { /* continuar aunque falle el borrado de imagen */ }
     }
 
+    // Borrar referencias en rental_items primero
+    await supabase
+      .from('rental_items')
+      .delete()
+      .eq('garment_id', prenda.id)
+
     const { error: deleteError } = await supabase
       .from('garments')
       .delete()
@@ -144,7 +150,7 @@ export default function GarmentModal({ prenda: initialPrenda, onClose, onDelete 
         onClick={(e) => e.stopPropagation()}
       >
         {/* Cerrar */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between sticky top-0 z-10 pt-3 -mt-5 pb-2">
           <button
             onClick={onClose}
             className="w-10 h-10 flex items-center justify-center rounded-full hover:brightness-125 transition-all"
@@ -184,6 +190,7 @@ export default function GarmentModal({ prenda: initialPrenda, onClose, onDelete 
               src={prenda.imagen_url}
               alt={prenda.nombre}
               className="w-full h-full object-cover"
+              loading="eager"
             />
           ) : (
             <span className="text-7xl opacity-30">👔</span>

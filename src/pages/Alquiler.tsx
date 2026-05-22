@@ -20,7 +20,7 @@ export default function Alquiler() {
   const [fechaInicio, setFechaInicio] = useState(new Date().toISOString().split('T')[0])
   const [fechaFin, setFechaFin] = useState('')
   const [total, setTotal] = useState('')
-  const [pagado, setPagado] = useState('')
+  const [pagado, setAbonado] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showPopup, setShowPopup] = useState(false)
@@ -64,6 +64,22 @@ export default function Alquiler() {
   }
 
   const deuda = (parseFloat(total) || 0) - (parseFloat(pagado) || 0)
+
+  function formatPesos(value: string) {
+    const num = parseInt(value.replace(/\D/g, ''), 10)
+    if (isNaN(num)) return ''
+    return num.toLocaleString('es-CO')
+  }
+
+  function handleTotalChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const raw = e.target.value.replace(/\D/g, '')
+    setTotal(raw)
+  }
+
+  function handleAbonadoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const raw = e.target.value.replace(/\D/g, '')
+    setAbonado(raw)
+  }
 
   async function handleSave() {
     if (!customerName.trim() || !customerPhone.trim()) {
@@ -247,7 +263,7 @@ export default function Alquiler() {
     ctx.font = '13px Plus Jakarta Sans, sans-serif'
     ctx.fillText(`Total:    ${formatCOP(parseFloat(total) || 0)}`, pad, y)
     y += lineH
-    ctx.fillText(`Pagado:   ${formatCOP(parseFloat(pagado) || 0)}`, pad, y)
+    ctx.fillText(`Abonado:   ${formatCOP(parseFloat(pagado) || 0)}`, pad, y)
     y += lineH
 
     const deudaVal = (parseFloat(total) || 0) - (parseFloat(pagado) || 0)
@@ -295,7 +311,7 @@ export default function Alquiler() {
       `*RentaTraje - Comprobante*%0A%0A` +
       `Cliente: ${customerName.trim()}%0A` +
       `Total: ${(parseFloat(total) || 0).toLocaleString('es-CO', { style: 'currency', currency: 'COP' })}%0A` +
-      `Pagado: ${(parseFloat(pagado) || 0).toLocaleString('es-CO', { style: 'currency', currency: 'COP' })}%0A` +
+      `Abonado: ${(parseFloat(pagado) || 0).toLocaleString('es-CO', { style: 'currency', currency: 'COP' })}%0A` +
       `Deuda: ${(deudaVal > 0 ? deudaVal : 0).toLocaleString('es-CO', { style: 'currency', currency: 'COP' })}`
     window.open(`https://wa.me/${phone}?text=${msg}`, '_blank')
   }
@@ -448,24 +464,24 @@ export default function Alquiler() {
           <IconCalendar className="w-4 h-4" aria-hidden="true" />
           Fechas
         </label>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="min-w-0">
             <span className="text-xs text-text-tertiary">Alquiler</span>
             <input
               type="date"
               value={fechaInicio}
               onChange={(e) => setFechaInicio(e.target.value)}
-              className="w-full rounded-[12px] px-3 py-2.5 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/40 mt-1"
+              className="w-full rounded-[12px] px-2 py-3 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/40 mt-1"
               style={inputStyle}
             />
           </div>
-          <div>
+          <div className="min-w-0">
             <span className="text-xs text-text-tertiary">Devolucion</span>
             <input
               type="date"
               value={fechaFin}
               onChange={(e) => setFechaFin(e.target.value)}
-              className="w-full rounded-[12px] px-3 py-2.5 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/40 mt-1"
+              className="w-full rounded-[12px] px-2 py-3 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/40 mt-1"
               style={inputStyle}
             />
           </div>
@@ -479,10 +495,11 @@ export default function Alquiler() {
         <div>
           <label className="text-xs text-text-tertiary">Total acordado</label>
           <input
-            type="number"
-            value={total}
-            onChange={(e) => setTotal(e.target.value)}
-            placeholder="0.00"
+            type="text"
+            inputMode="numeric"
+            value={formatPesos(total)}
+            onChange={handleTotalChange}
+            placeholder="50.000"
             className="w-full rounded-[12px] px-4 py-2.5 text-sm text-text-primary mt-1 focus:outline-none focus:ring-2 focus:ring-accent/40"
             style={inputStyle}
           />
@@ -491,13 +508,14 @@ export default function Alquiler() {
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="text-xs font-medium" style={{ color: 'var(--success)' }}>
-              Pagado
+              Abonado
             </label>
             <input
-              type="number"
-              value={pagado}
-              onChange={(e) => setPagado(e.target.value)}
-              placeholder="0.00"
+              type="text"
+              inputMode="numeric"
+              value={formatPesos(pagado)}
+              onChange={handleAbonadoChange}
+              placeholder="0"
               className="w-full rounded-[12px] px-4 py-2.5 text-sm font-medium mt-1 focus:outline-none focus:ring-2 focus:ring-success/40"
               style={{
                 ...inputStyle,

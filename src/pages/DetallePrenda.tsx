@@ -122,6 +122,12 @@ export default function DetallePrenda() {
       }
     }
 
+    // Borrar referencias en rental_items primero
+    await supabase
+      .from('rental_items')
+      .delete()
+      .eq('garment_id', prenda.id)
+
     const { error: deleteError } = await supabase
       .from('garments')
       .delete()

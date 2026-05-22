@@ -7,15 +7,18 @@ interface PrendasState {
   loading: boolean
   error: string | null
   fetchPrendas: () => Promise<void>
+  fetchPrendas: () => Promise<void>
   agregarPrenda: (prenda: Omit<Prenda, 'id'>) => Promise<{ success: boolean; error?: string }>
+  removePrenda: (id: number) => void
 }
 
-export const usePrendasStore = create<PrendasState>((set) => ({
+export const usePrendasStore = create<PrendasState>((set, get) => ({
   prendas: [],
   loading: false,
   error: null,
 
   fetchPrendas: async () => {
+    if (get().prendas.length > 0) return
     set({ loading: true, error: null })
     const { data, error } = await supabase
       .from('garments')
@@ -43,5 +46,9 @@ export const usePrendasStore = create<PrendasState>((set) => ({
 
     set((state) => ({ prendas: [data, ...state.prendas] }))
     return { success: true }
+  },
+
+  removePrenda: (id) => {
+    set((state) => ({ prendas: state.prendas.filter((p) => p.id !== id) }))
   },
 }))

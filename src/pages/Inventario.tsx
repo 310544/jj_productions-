@@ -7,7 +7,7 @@ import { usePrendasStore } from '../store/usePrendasStore'
 import type { Categoria, Prenda } from '../types'
 
 export default function Inventario() {
-  const { prendas, loading, error, fetchPrendas } = usePrendasStore()
+  const { prendas, loading, error, fetchPrendas, removePrenda } = usePrendasStore()
   const [search, setSearch] = useState('')
   const [categoria, setCategoria] = useState<Categoria | null>(null)
   const [selectedPrenda, setSelectedPrenda] = useState<Prenda | null>(null)
@@ -29,10 +29,6 @@ export default function Inventario() {
       <SearchBar value={search} onChange={setSearch} />
 
       <CategoryFilter active={categoria} onChange={setCategoria} />
-
-      {loading && (
-        <p className="text-center text-text-secondary py-12">Cargando...</p>
-      )}
 
       {error && (
         <p className="text-center py-12" style={{ color: 'var(--danger)' }}>
@@ -60,8 +56,8 @@ export default function Inventario() {
           prenda={selectedPrenda}
           onClose={() => setSelectedPrenda(null)}
           onDelete={() => {
+            removePrenda(selectedPrenda.id)
             setSelectedPrenda(null)
-            fetchPrendas()
           }}
         />
       )}

@@ -26,6 +26,7 @@ export default function GarmentCard({ prenda, onSelect }: Props) {
           <img
             src={prenda.imagen_url}
             alt={prenda.nombre}
+            loading="lazy"
             className="w-full h-full object-cover"
           />
         ) : (

@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { usePrendasStore } from '../store/usePrendasStore'
 import { supabase } from '../lib/supabase'
@@ -26,11 +26,42 @@ export default function AgregarPrenda() {
   const [categoria, setCategoria] = useState<Categoria | ''>('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [openTipo, setOpenTipo] = useState(false)
+  const [openCategoria, setOpenCategoria] = useState(false)
+
+  useEffect(() => {
+    if (!openTipo && !openCategoria) return
+    function close() { setOpenTipo(false); setOpenCategoria(false) }
+    document.addEventListener('click', close)
+    return () => document.removeEventListener('click', close)
+  }, [openTipo, openCategoria])
 
   function handleFile(file: File | null) {
     if (!file) return
     setImagen(file)
     setPreview(URL.createObjectURL(file))
+  }
+
+  async function compressImage(file: File): Promise<Blob> {
+    return new Promise((resolve, reject) => {
+      const img = new Image()
+      img.onload = () => {
+        const maxW = 800
+        const scale = img.width > maxW ? maxW / img.width : 1
+        const canvas = document.createElement('canvas')
+        canvas.width = img.width * scale
+        canvas.height = img.height * scale
+        const ctx = canvas.getContext('2d')!
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+        canvas.toBlob(
+          (blob) => { if (blob) resolve(blob); else reject(new Error('Compresion fallida')) },
+          'image/jpeg',
+          0.7,
+        )
+      }
+      img.onerror = () => reject(new Error('Error al cargar imagen'))
+      img.src = URL.createObjectURL(file)
+    })
   }
 
   async function handleSave() {
@@ -49,11 +80,11 @@ export default function AgregarPrenda() {
     let imagen_url = ''
 
     if (imagen) {
-      const ext = imagen.name.split('.').pop() || 'jpg'
-      const safeName = `${Date.now()}.${ext}`
+      const compressed = await compressImage(imagen)
+      const safeName = `${Date.now()}.jpg`
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('prendas')
-        .upload(safeName, imagen)
+        .upload(safeName, compressed)
 
       if (uploadError) {
         setError('Error al subir imagen: ' + uploadError.message)
@@ -185,59 +216,109 @@ export default function AgregarPrenda() {
       />
 
       <div className="space-y-3">
+        {/* Tipo de prenda */}
         <div>
           <label className="block text-sm font-medium text-text-secondary mb-1.5">
             Tipo de prenda
           </label>
           <div className="relative">
-            <select
-              value={tipo}
-              onChange={(e) => setTipo(e.target.value)}
-              className="w-full appearance-none rounded-[12px] px-4 py-3 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/40"
-              style={inputStyle}
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); setOpenTipo(!openTipo); setOpenCategoria(false) }}
+              className="w-full rounded-[12px] px-4 py-3 text-sm text-left flex items-center justify-between focus:outline-none focus:ring-2 focus:ring-accent/40"
+              style={{
+                ...inputStyle,
+                color: tipo ? 'var(--text-primary)' : 'var(--text-tertiary)',
+              }}
             >
-              <option value="" disabled>
-                Seleccionar tipo
-              </option>
-              {TIPOS.map((t) => (
-                <option key={t} value={t} style={{ background: '#1a0533', color: '#fff' }}>
-                  {t}
-                </option>
-              ))}
-            </select>
-            <IconChevronDown
-              className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 pointer-events-none"
-              style={{ color: 'var(--text-secondary)' }}
-              aria-hidden="true"
-            />
+              {tipo || 'Seleccionar tipo'}
+              <IconChevronDown
+                className="w-5 h-5 shrink-0"
+                style={{ color: 'var(--text-secondary)' }}
+                aria-hidden="true"
+              />
+            </button>
+            {openTipo && (
+              <div
+                onClick={(e) => e.stopPropagation()}
+                className="absolute top-full mt-1 left-0 right-0 rounded-[12px] py-1 z-20"
+                style={{
+                  background: 'rgba(20,20,25,0.95)',
+                  backdropFilter: 'blur(20px)',
+                  WebkitBackdropFilter: 'blur(20px)',
+                  border: '1px solid rgba(255,255,255,0.10)',
+                  boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+                }}
+              >
+                {TIPOS.map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => { setTipo(t); setOpenTipo(false) }}
+                    className="w-full text-left px-4 py-2.5 text-sm transition-all hover:brightness-150"
+                    style={{
+                      color: tipo === t ? 'var(--accent)' : 'var(--text-primary)',
+                      background: tipo === t ? 'rgba(212,160,23,0.08)' : 'transparent',
+                    }}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
+        {/* Categoria */}
         <div>
           <label className="block text-sm font-medium text-text-secondary mb-1.5">
             Categoria
           </label>
           <div className="relative">
-            <select
-              value={categoria}
-              onChange={(e) => setCategoria(e.target.value as Categoria)}
-              className="w-full appearance-none rounded-[12px] px-4 py-3 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/40"
-              style={inputStyle}
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); setOpenCategoria(!openCategoria); setOpenTipo(false) }}
+              className="w-full rounded-[12px] px-4 py-3 text-sm text-left flex items-center justify-between focus:outline-none focus:ring-2 focus:ring-accent/40"
+              style={{
+                ...inputStyle,
+                color: categoria ? 'var(--text-primary)' : 'var(--text-tertiary)',
+              }}
             >
-              <option value="" disabled>
-                Hombre / Mujer / Niño / Niña
-              </option>
-              {CATEGORIAS.map((c) => (
-                <option key={c} value={c} style={{ background: '#1a0533', color: '#fff' }}>
-                  {c}
-                </option>
-              ))}
-            </select>
-            <IconChevronDown
-              className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 pointer-events-none"
-              style={{ color: 'var(--text-secondary)' }}
-              aria-hidden="true"
-            />
+              {categoria || 'Hombre / Mujer / Niño / Niña'}
+              <IconChevronDown
+                className="w-5 h-5 shrink-0"
+                style={{ color: 'var(--text-secondary)' }}
+                aria-hidden="true"
+              />
+            </button>
+            {openCategoria && (
+              <div
+                onClick={(e) => e.stopPropagation()}
+                className="absolute top-full mt-1 left-0 right-0 rounded-[12px] py-1 z-20"
+                style={{
+                  background: 'rgba(20,20,25,0.95)',
+                  backdropFilter: 'blur(20px)',
+                  WebkitBackdropFilter: 'blur(20px)',
+                  border: '1px solid rgba(255,255,255,0.10)',
+                  boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+                }}
+              >
+                {CATEGORIAS.map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => { setCategoria(c); setOpenCategoria(false) }}
+                    className="w-full text-left px-4 py-2.5 text-sm transition-all hover:brightness-150"
+                    style={{
+                      color: categoria === c ? 'var(--accent)' : 'var(--text-primary)',
+                      background: categoria === c ? 'rgba(212,160,23,0.08)' : 'transparent',
+                    }}
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
