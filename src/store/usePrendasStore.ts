@@ -7,7 +7,6 @@ interface PrendasState {
   loading: boolean
   error: string | null
   fetchPrendas: () => Promise<void>
-  fetchPrendas: () => Promise<void>
   agregarPrenda: (prenda: Omit<Prenda, 'id'>) => Promise<{ success: boolean; error?: string }>
   removePrenda: (id: number) => void
 }
