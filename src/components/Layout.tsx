@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useLocation } from 'react-router-dom'
-import { IconFileInvoice, IconPlus, IconChartPie, IconX } from '@tabler/icons-react'
+import { IconFileInvoice, IconPlus, IconChartPie } from '@tabler/icons-react'
 import AgregarPrenda from '../pages/AgregarPrenda'
 import Alquiler from '../pages/Alquiler'
 
