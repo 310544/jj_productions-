@@ -1,52 +1,13 @@
 import { useLocation, useNavigate } from 'react-router-dom'
-import { useThemeStore } from '../store/useThemeStore'
-import { IconSun, IconMoon, IconFileInvoice, IconPlus, IconChartPie } from '@tabler/icons-react'
+import { IconFileInvoice, IconPlus, IconChartPie } from '@tabler/icons-react'
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation()
   const navigate = useNavigate()
-  const { theme, toggle } = useThemeStore()
   const isHome = location.pathname === '/'
 
   return (
     <div className="app-wrapper">
-      <header
-        className="sticky top-0 z-20 px-4 py-3 flex items-center justify-between"
-        style={{
-          background: 'var(--glass-bg)',
-          backdropFilter: 'var(--glass-blur)',
-          WebkitBackdropFilter: 'var(--glass-blur)',
-          borderBottom: '1px solid var(--glass-border)',
-        }}
-      >
-        <div className="flex items-center gap-2">
-          <img
-            src="/logo-jj.png.png"
-            alt="RentaTraje"
-            className="h-14 w-auto"
-            style={{
-              filter: 'invert(1) sepia(1) saturate(3) hue-rotate(5deg)',
-            }}
-          />
-        </div>
-        <button
-          onClick={toggle}
-          className="w-9 h-9 flex items-center justify-center rounded-full hover:brightness-125 transition-all"
-          style={{
-            background: 'var(--glass-strong)',
-            border: '1px solid var(--glass-border)',
-            color: 'var(--text-secondary)',
-          }}
-          aria-label="Cambiar tema"
-        >
-          {theme === 'dark' ? (
-            <IconSun className="w-4 h-4" aria-hidden="true" />
-          ) : (
-            <IconMoon className="w-4 h-4" aria-hidden="true" />
-          )}
-        </button>
-      </header>
-
       <main className="px-4 py-5 pb-28">
         {children}
       </main>
@@ -88,13 +49,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               <div
                 className="w-[52px] h-[52px] flex items-center justify-center rounded-full shadow-lg transition-all"
                 style={{
-                  background: 'var(--accent)',
+                  background: '#FFB800',
                   color: '#fff',
                 }}
               >
                 <IconPlus className="w-7 h-7" aria-hidden="true" />
               </div>
-              <span className="text-[10px] font-medium" style={{ color: 'var(--accent)' }}>
+              <span className="text-[10px] font-medium" style={{ color: '#FFB800' }}>
                 Agregar
               </span>
             </button>

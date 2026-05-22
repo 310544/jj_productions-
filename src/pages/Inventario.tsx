@@ -2,13 +2,15 @@ import { useEffect, useState } from 'react'
 import GarmentCard from '../components/GarmentCard'
 import SearchBar from '../components/SearchBar'
 import CategoryFilter from '../components/CategoryFilter'
+import GarmentModal from '../components/GarmentModal'
 import { usePrendasStore } from '../store/usePrendasStore'
-import type { Categoria } from '../types'
+import type { Categoria, Prenda } from '../types'
 
 export default function Inventario() {
   const { prendas, loading, error, fetchPrendas } = usePrendasStore()
   const [search, setSearch] = useState('')
   const [categoria, setCategoria] = useState<Categoria | null>(null)
+  const [selectedPrenda, setSelectedPrenda] = useState<Prenda | null>(null)
 
   useEffect(() => {
     fetchPrendas()
@@ -22,42 +24,8 @@ export default function Inventario() {
     return matchSearch && matchCategoria
   })
 
-  const disponibles = prendas.filter((p) => p.estado === 'disponible').length
-  const ocupados = prendas.filter((p) => p.estado === 'ocupado').length
-
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-3">
-        <div
-          className="rounded-[16px] px-4 py-4"
-          style={{
-            background: 'var(--glass-bg)',
-            backdropFilter: 'var(--glass-blur)',
-            WebkitBackdropFilter: 'var(--glass-blur)',
-            border: '1px solid var(--glass-border)',
-          }}
-        >
-          <p className="text-3xl font-bold" style={{ color: 'var(--success)' }}>
-            {disponibles}
-          </p>
-          <p className="text-xs font-medium text-text-secondary mt-1">Disponibles</p>
-        </div>
-        <div
-          className="rounded-[16px] px-4 py-4"
-          style={{
-            background: 'var(--glass-bg)',
-            backdropFilter: 'var(--glass-blur)',
-            WebkitBackdropFilter: 'var(--glass-blur)',
-            border: '1px solid var(--glass-border)',
-          }}
-        >
-          <p className="text-3xl font-bold" style={{ color: 'var(--danger)' }}>
-            {ocupados}
-          </p>
-          <p className="text-xs font-medium text-text-secondary mt-1">Ocupados</p>
-        </div>
-      </div>
-
       <SearchBar value={search} onChange={setSearch} />
 
       <CategoryFilter active={categoria} onChange={setCategoria} />
@@ -83,9 +51,20 @@ export default function Inventario() {
 
       <div className="grid grid-cols-2 gap-3">
         {filtered.map((prenda) => (
-          <GarmentCard key={prenda.id} prenda={prenda} />
+          <GarmentCard key={prenda.id} prenda={prenda} onSelect={setSelectedPrenda} />
         ))}
       </div>
+
+      {selectedPrenda && (
+        <GarmentModal
+          prenda={selectedPrenda}
+          onClose={() => setSelectedPrenda(null)}
+          onDelete={() => {
+            setSelectedPrenda(null)
+            fetchPrendas()
+          }}
+        />
+      )}
     </div>
   )
 }

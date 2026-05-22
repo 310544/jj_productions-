@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
 @import "tailwindcss";
 
 :root {
@@ -28,7 +29,7 @@
 
   --overlay: rgba(0, 0, 0, 0.55);
 
-  --bg-gradient: linear-gradient(160deg, #0a0a0f 0%, #0d0d14 50%, #0a0f0d 100%);
+  --bg-gradient: #000000;
 
   --radius-card: 16px;
   --radius-btn: 12px;
@@ -59,6 +60,7 @@
 }
 
 @theme {
+  --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
   --color-glass-bg: var(--glass-bg);
   --color-glass-border: var(--glass-border);
   --color-glass-strong: var(--glass-strong);
@@ -87,7 +89,7 @@
 
 body {
   margin: 0;
-  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
@@ -122,4 +124,23 @@ body {
     pointer-events: none;
     z-index: 10;
   }
+
+  /* Semicírculo decorativo en el header */
+.app-wrapper::after {
+  content: '';
+  position: absolute;
+  top: -80px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 500px;
+  height: 200px;
+  background: radial-gradient(ellipse at center top, rgba(212, 160, 23, 0.18) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+header {
+  position: relative;
+  z-index: 1;
+}
 }

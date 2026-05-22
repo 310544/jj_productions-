@@ -2,12 +2,14 @@ import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { usePrendasStore } from '../store/usePrendasStore'
 import { supabase } from '../lib/supabase'
+import type { Categoria } from '../types'
 import {
   IconArrowLeft, IconCamera, IconPhoto, IconChevronDown,
   IconScan, IconCurrencyDollar, IconDeviceFloppy,
 } from '@tabler/icons-react'
 
 const TIPOS = ['Traje', 'Camisa', 'Pantalon']
+const CATEGORIAS: Categoria[] = ['Hombre', 'Mujer', 'Niño', 'Niña']
 
 export default function AgregarPrenda() {
   const navigate = useNavigate()
@@ -21,6 +23,7 @@ export default function AgregarPrenda() {
   const [codigo, setCodigo] = useState('')
   const [descripcion, setDescripcion] = useState('')
   const [precio, setPrecio] = useState('')
+  const [categoria, setCategoria] = useState<Categoria | ''>('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -31,7 +34,7 @@ export default function AgregarPrenda() {
   }
 
   async function handleSave() {
-    if (!tipo || !codigo.trim() || !descripcion.trim() || !precio.trim()) {
+    if (!tipo || !categoria || !codigo.trim() || !descripcion.trim() || !precio.trim()) {
       setError('Completa todos los campos')
       return
     }
@@ -71,6 +74,7 @@ export default function AgregarPrenda() {
       imagen_url,
       estado: 'disponible',
       precio: parseFloat(precio),
+      categoria: categoria as Categoria,
     })
 
     setSaving(false)
@@ -198,6 +202,34 @@ export default function AgregarPrenda() {
               {TIPOS.map((t) => (
                 <option key={t} value={t} style={{ background: '#1a0533', color: '#fff' }}>
                   {t}
+                </option>
+              ))}
+            </select>
+            <IconChevronDown
+              className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 pointer-events-none"
+              style={{ color: 'var(--text-secondary)' }}
+              aria-hidden="true"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-text-secondary mb-1.5">
+            Categoria
+          </label>
+          <div className="relative">
+            <select
+              value={categoria}
+              onChange={(e) => setCategoria(e.target.value as Categoria)}
+              className="w-full appearance-none rounded-[12px] px-4 py-3 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/40"
+              style={inputStyle}
+            >
+              <option value="" disabled>
+                Hombre / Mujer / Niño / Niña
+              </option>
+              {CATEGORIAS.map((c) => (
+                <option key={c} value={c} style={{ background: '#1a0533', color: '#fff' }}>
+                  {c}
                 </option>
               ))}
             </select>

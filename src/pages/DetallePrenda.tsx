@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase'
 import type { Prenda } from '../types'
 import {
   IconArrowLeft, IconUser, IconPhone, IconCalendar,
-  IconCheck, IconAlertTriangle,
+  IconCheck, IconAlertTriangle, IconTrash,
 } from '@tabler/icons-react'
 
 interface RentalInfo {
@@ -23,6 +23,7 @@ export default function DetallePrenda() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [updating, setUpdating] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     fetchPrenda()
@@ -103,6 +104,38 @@ export default function DetallePrenda() {
     setUpdating(false)
   }
 
+  async function handleDelete() {
+    if (!prenda) return
+    if (!window.confirm(`Eliminar "${prenda.nombre}"? Esta accion no se puede deshacer.`)) return
+
+    setDeleting(true)
+    setError(null)
+
+    // Eliminar imagen del storage si tiene
+    if (prenda.imagen_url) {
+      try {
+        const url = new URL(prenda.imagen_url)
+        const path = url.pathname.split('/').slice(2).join('/')
+        await supabase.storage.from('prendas').remove([path])
+      } catch {
+        // Si falla el borrado de imagen, continuamos con eliminar el registro
+      }
+    }
+
+    const { error: deleteError } = await supabase
+      .from('garments')
+      .delete()
+      .eq('id', prenda.id)
+
+    if (deleteError) {
+      setError('Error al eliminar: ' + deleteError.message)
+      setDeleting(false)
+      return
+    }
+
+    navigate('/')
+  }
+
   const cardStyle = {
     background: 'var(--glass-bg)',
     backdropFilter: 'var(--glass-blur)',
@@ -175,18 +208,11 @@ export default function DetallePrenda() {
         <span
           className="absolute top-3 left-3 px-3 py-1 rounded-full text-sm font-semibold"
           style={{
-            background:
-              prenda.estado === 'disponible'
-                ? 'var(--success-bg)'
-                : 'var(--danger-bg)',
-            border:
-              prenda.estado === 'disponible'
-                ? '1px solid var(--success-border)'
-                : '1px solid var(--danger-border)',
-            color:
-              prenda.estado === 'disponible'
-                ? 'var(--success)'
-                : 'var(--danger)',
+            background: 'rgba(255,255,255,0.08)',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+            border: '1px solid rgba(255,255,255,0.12)',
+            color: 'rgba(255,255,255,0.7)',
           }}
         >
           {prenda.estado}
@@ -273,6 +299,26 @@ export default function DetallePrenda() {
           </button>
         </div>
       )}
+
+      {error && (
+        <p className="text-sm text-center font-medium" style={{ color: 'var(--danger)' }}>
+          {error}
+        </p>
+      )}
+
+      <button
+        onClick={handleDelete}
+        disabled={deleting}
+        className="w-full py-3 font-semibold rounded-[14px] transition-all hover:brightness-125 disabled:opacity-50 flex items-center justify-center gap-2"
+        style={{
+          border: '1px solid var(--danger-border)',
+          color: 'var(--danger)',
+          background: 'var(--danger-bg)',
+        }}
+      >
+        <IconTrash className="w-5 h-5" aria-hidden="true" />
+        {deleting ? 'Eliminando...' : 'Eliminar prenda'}
+      </button>
     </div>
   )
 }

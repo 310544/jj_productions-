@@ -10,7 +10,6 @@ import { useNavigate } from 'react-router-dom'
 export default function Alquiler() {
   const navigate = useNavigate()
 
-  const [step, setStep] = useState<'form' | 'success'>('form')
   const [customerName, setCustomerName] = useState('')
   const [customerPhone, setCustomerPhone] = useState('')
   const [selectedGarments, setSelectedGarments] = useState<Prenda[]>([])
@@ -24,6 +23,7 @@ export default function Alquiler() {
   const [pagado, setPagado] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showPopup, setShowPopup] = useState(false)
 
   useEffect(() => {
     supabase
@@ -155,28 +155,7 @@ export default function Alquiler() {
       .in('id', selectedGarments.map((g) => g.id))
 
     setSaving(false)
-    setStep('success')
-  }
-
-  function openWhatsApp() {
-    const itemsList = selectedGarments
-      .map((g) => `- ${g.codigo}: ${g.nombre}`)
-      .join('%0A')
-    const formatCOP = (n: number) =>
-      n.toLocaleString('es-CO', { style: 'currency', currency: 'COP' })
-    const deudaCOP = formatCOP(deuda > 0 ? deuda : 0)
-    const msg =
-      `*RentaTraje - Comprobante*%0A%0A` +
-      `Cliente: ${customerName.trim()}%0A` +
-      `Telefono: ${customerPhone.trim()}%0A%0A` +
-      `*Prendas:*%0A${itemsList}%0A%0A` +
-      `Inicio: ${fechaInicio}%0A` +
-      `Devolucion: ${fechaFin}%0A%0A` +
-      `Total: ${formatCOP(parseFloat(total) || 0)}%0A` +
-      `Pagado: ${formatCOP(parseFloat(pagado) || 0)}%0A` +
-      `Deuda: ${deudaCOP}`
-    const phone = customerPhone.trim().replace(/\D/g, '')
-    window.open(`https://wa.me/${phone}?text=${msg}`, '_blank')
+    setShowPopup(true)
   }
 
   const inputStyle = {
@@ -191,57 +170,134 @@ export default function Alquiler() {
     border: '1px solid var(--glass-border)',
   }
 
-  if (step === 'success') {
-    return (
-      <div className="space-y-5">
-        <button
-          onClick={() => navigate('/')}
-          className="w-10 h-10 flex items-center justify-center rounded-full hover:brightness-125 transition-all"
-          style={{
-            background: 'var(--glass-strong)',
-            border: '1px solid var(--glass-border)',
-            color: 'var(--text-secondary)',
-          }}
-          aria-label="Volver"
-        >
-          <IconArrowLeft className="w-5 h-5" aria-hidden="true" />
-        </button>
+  async function generateReceiptImage(): Promise<Blob | null> {
+    const canvas = document.createElement('canvas')
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return null
 
-        <div className="text-center py-10 space-y-4">
-          <div
-            className="w-16 h-16 rounded-full flex items-center justify-center mx-auto"
-            style={{
-              background: 'var(--success-bg)',
-              border: '1px solid var(--success-border)',
-            }}
-          >
-            <IconCheck className="w-8 h-8" style={{ color: 'var(--success)' }} aria-hidden="true" />
-          </div>
-          <h3 className="text-xl font-bold text-text-primary">Alquiler registrado</h3>
-          <p className="text-text-secondary">Las prendas estan marcadas como ocupadas</p>
+    const w = 500
+    const pad = 30
+    const lineH = 28
+    let y = pad
 
-          <button
-            onClick={openWhatsApp}
-            className="w-full py-3.5 text-white font-semibold rounded-[14px] transition-all hover:brightness-110 flex items-center justify-center gap-2"
-            style={{ background: 'rgba(34,197,94,0.85)' }}
-          >
-            <IconBrandWhatsapp className="w-5 h-5" aria-hidden="true" />
-            Enviar comprobante por WhatsApp
-          </button>
+    canvas.width = w
 
-          <button
-            onClick={() => navigate('/')}
-            className="w-full py-3.5 font-semibold rounded-[14px] transition-all hover:brightness-125"
-            style={{
-              ...cardStyle,
-              color: 'var(--text-primary)',
-            }}
-          >
-            Volver al inventario
-          </button>
-        </div>
-      </div>
-    )
+    // Altura dinamica
+    const itemsCount = selectedGarments.length
+    canvas.height = pad + 40 + 30 + (itemsCount * 22) + 30 + (lineH * 5) + pad + 10
+
+    // Fondo blanco
+    ctx.fillStyle = '#ffffff'
+    ctx.beginPath()
+    ctx.roundRect(0, 0, canvas.width, canvas.height, 16)
+    ctx.fill()
+
+    // Logo / titulo
+    ctx.fillStyle = '#111111'
+    ctx.font = 'bold 18px Plus Jakarta Sans, sans-serif'
+    ctx.fillText('RentaTraje', pad, y)
+    y += 18
+    ctx.fillStyle = '#888888'
+    ctx.font = '11px Plus Jakarta Sans, sans-serif'
+    ctx.fillText('Comprobante de alquiler', pad, y)
+    y += 28
+
+    // Linea
+    ctx.strokeStyle = '#e5e5e5'
+    ctx.lineWidth = 1
+    ctx.beginPath()
+    ctx.moveTo(pad, y)
+    ctx.lineTo(w - pad, y)
+    ctx.stroke()
+    y += 18
+
+    // Cliente
+    ctx.fillStyle = '#333333'
+    ctx.font = '13px Plus Jakarta Sans, sans-serif'
+    ctx.fillText(`Cliente: ${customerName.trim()}`, pad, y)
+    y += lineH
+    ctx.fillText(`Telefono: ${customerPhone.trim()}`, pad, y)
+    y += 24
+
+    // Prendas
+    ctx.fillStyle = '#111111'
+    ctx.font = 'bold 12px Plus Jakarta Sans, sans-serif'
+    ctx.fillText('Prendas:', pad, y)
+    y += lineH
+    ctx.fillStyle = '#444444'
+    ctx.font = '12px Plus Jakarta Sans, sans-serif'
+    for (const g of selectedGarments) {
+      ctx.fillText(`${g.codigo}  —  ${g.nombre}`, pad + 10, y)
+      y += 22
+    }
+    y += 10
+
+    // Totales
+    const formatCOP = (n: number) =>
+      n.toLocaleString('es-CO', { style: 'currency', currency: 'COP' })
+
+    ctx.strokeStyle = '#e5e5e5'
+    ctx.beginPath()
+    ctx.moveTo(pad, y)
+    ctx.lineTo(w - pad, y)
+    ctx.stroke()
+    y += 22
+
+    ctx.fillStyle = '#111111'
+    ctx.font = '13px Plus Jakarta Sans, sans-serif'
+    ctx.fillText(`Total:    ${formatCOP(parseFloat(total) || 0)}`, pad, y)
+    y += lineH
+    ctx.fillText(`Pagado:   ${formatCOP(parseFloat(pagado) || 0)}`, pad, y)
+    y += lineH
+
+    const deudaVal = (parseFloat(total) || 0) - (parseFloat(pagado) || 0)
+    ctx.fillStyle = deudaVal > 0 ? '#d44' : '#333'
+    ctx.font = 'bold 13px Plus Jakarta Sans, sans-serif'
+    ctx.fillText(`Deuda:    ${formatCOP(deudaVal > 0 ? deudaVal : 0)}`, pad, y)
+    y += lineH + 4
+
+    ctx.fillStyle = '#888888'
+    ctx.font = '11px Plus Jakarta Sans, sans-serif'
+    ctx.fillText(`Inicio: ${fechaInicio}  |  Devolucion: ${fechaFin}`, pad, y)
+
+    return new Promise((resolve) => {
+      canvas.toBlob((blob) => resolve(blob), 'image/png')
+    })
+  }
+
+  async function handleShareReceipt() {
+    const blob = await generateReceiptImage()
+    if (!blob) return
+
+    const file = new File([blob], 'comprobante-rentatraje.png', { type: 'image/png' })
+
+    if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({
+          files: [file],
+          title: 'Comprobante RentaTraje',
+        })
+        return
+      } catch {}
+    }
+
+    // Fallback: descargar imagen y abrir WhatsApp con texto
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'comprobante-rentatraje.png'
+    a.click()
+    URL.revokeObjectURL(url)
+
+    const phone = customerPhone.trim().replace(/\D/g, '')
+    const deudaVal = (parseFloat(total) || 0) - (parseFloat(pagado) || 0)
+    const msg =
+      `*RentaTraje - Comprobante*%0A%0A` +
+      `Cliente: ${customerName.trim()}%0A` +
+      `Total: ${(parseFloat(total) || 0).toLocaleString('es-CO', { style: 'currency', currency: 'COP' })}%0A` +
+      `Pagado: ${(parseFloat(pagado) || 0).toLocaleString('es-CO', { style: 'currency', currency: 'COP' })}%0A` +
+      `Deuda: ${(deudaVal > 0 ? deudaVal : 0).toLocaleString('es-CO', { style: 'currency', currency: 'COP' })}`
+    window.open(`https://wa.me/${phone}?text=${msg}`, '_blank')
   }
 
   return (
@@ -480,6 +536,64 @@ export default function Alquiler() {
       >
         {saving ? 'Guardando...' : 'Registrar alquiler'}
       </button>
+
+      {/* Popup de exito */}
+      {showPopup && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: 'rgba(0,0,0,0.6)' }}
+          onClick={(e) => { if (e.target === e.currentTarget) setShowPopup(false) }}
+        >
+          <div
+            className="w-full max-w-[380px] rounded-[28px] px-4 pt-5 pb-6 space-y-4"
+            style={{
+              background: 'rgba(15,15,20,0.78)',
+              backdropFilter: 'blur(40px) saturate(180%)',
+              WebkitBackdropFilter: 'blur(40px) saturate(180%)',
+              border: '1px solid rgba(255,255,255,0.10)',
+              boxShadow: '0 20px 60px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.06)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="text-center space-y-3">
+              <div
+                className="w-14 h-14 rounded-full flex items-center justify-center mx-auto"
+                style={{
+                  background: 'var(--success-bg)',
+                  border: '1px solid var(--success-border)',
+                }}
+              >
+                <IconCheck className="w-7 h-7" style={{ color: 'var(--success)' }} aria-hidden="true" />
+              </div>
+              <h3 className="text-lg font-bold text-text-primary">Alquiler registrado</h3>
+              <p className="text-sm text-text-secondary">Las prendas estan marcadas como ocupadas</p>
+            </div>
+
+            <button
+              onClick={handleShareReceipt}
+              className="w-full py-3.5 text-white font-semibold rounded-[14px] transition-all hover:brightness-110 flex items-center justify-center gap-2"
+              style={{ background: '#25D366' }}
+            >
+              <IconBrandWhatsapp className="w-5 h-5" aria-hidden="true" />
+              Enviar comprobante a WhatsApp
+            </button>
+
+            <button
+              onClick={() => {
+                setShowPopup(false)
+                navigate('/')
+              }}
+              className="w-full py-3.5 font-semibold rounded-[14px] transition-all hover:brightness-125"
+              style={{
+                ...cardStyle,
+                color: 'var(--text-primary)',
+              }}
+            >
+              Volver al inventario
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
