@@ -1,10 +1,14 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { supabase } from '../lib/supabase'
-import type { Prenda } from '../types'
+import { formatDateShort } from '../lib/formatDate'
+import type { Prenda, Categoria } from '../types'
 import {
   IconX, IconUser, IconPhone, IconCalendar,
-  IconTrash, IconArrowBack,
+  IconTrash, IconArrowBack, IconEdit, IconCheck, IconUpload,
 } from '@tabler/icons-react'
+
+const CATEGORIAS: Categoria[] = ['Hombre', 'Mujer', 'Niño', 'Niña']
 
 interface RentalDetail {
   rental_id: number
@@ -23,17 +27,98 @@ interface Props {
 
 export default function GarmentModal({ prenda: initialPrenda, onClose, onDelete }: Props) {
   const [prenda, setPrenda] = useState(initialPrenda)
+  const [editing, setEditing] = useState(false)
+  const [editCodigo, setEditCodigo] = useState(initialPrenda.codigo)
+  const [editNombre, setEditNombre] = useState(initialPrenda.nombre)
+  const [editPrecio, setEditPrecio] = useState(String(initialPrenda.precio || ''))
+  const [editCategoria, setEditCategoria] = useState<Categoria | ''>(initialPrenda.categoria || '')
+  const [editImagen, setEditImagen] = useState<File | null>(null)
+  const [editPreview, setEditPreview] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
   const [rentals, setRentals] = useState<RentalDetail[]>([])
   const [loadingRentals, setLoadingRentals] = useState(false)
   const [returningId, setReturningId] = useState<number | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     setPrenda(initialPrenda)
+    setEditCodigo(initialPrenda.codigo)
+    setEditNombre(initialPrenda.nombre)
+    setEditPrecio(String(initialPrenda.precio || ''))
+    setEditCategoria(initialPrenda.categoria || '')
+    setEditing(false)
+    setEditImagen(null)
+    setEditPreview(null)
     setError(null)
     fetchRentals(initialPrenda.id)
   }, [initialPrenda])
+
+  function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setEditImagen(file)
+    setEditPreview(URL.createObjectURL(file))
+  }
+
+  async function handleSave() {
+    if (!editCodigo.trim() || !editNombre.trim()) {
+      setError('Codigo y nombre son obligatorios')
+      return
+    }
+    setSaving(true)
+    setError(null)
+
+    let imagen_url = prenda.imagen_url
+
+    if (editImagen) {
+      const ext = editImagen.name.split('.').pop()
+      const path = `${Date.now()}.${ext}`
+      const { error: uploadError } = await supabase.storage
+        .from('prendas')
+        .upload(path, editImagen)
+      if (uploadError) {
+        setError('Error al subir imagen: ' + uploadError.message)
+        setSaving(false)
+        return
+      }
+      const { data: publicData } = supabase.storage.from('prendas').getPublicUrl(path)
+      imagen_url = publicData.publicUrl
+    }
+
+    const precio = parseFloat(editPrecio) || 0
+    const { error: updateError } = await supabase
+      .from('garments')
+      .update({
+        codigo: editCodigo.trim(),
+        nombre: editNombre.trim(),
+        precio,
+        categoria: editCategoria || null,
+        imagen_url,
+      })
+      .eq('id', prenda.id)
+
+    if (updateError) {
+      setError('Error al guardar: ' + updateError.message)
+      setSaving(false)
+      return
+    }
+
+    setPrenda({
+      ...prenda,
+      codigo: editCodigo.trim(),
+      nombre: editNombre.trim(),
+      precio,
+      categoria: editCategoria || undefined,
+      imagen_url,
+    })
+    setEditing(false)
+    setEditImagen(null)
+    setEditPreview(null)
+    setSaving(false)
+  }
 
   async function fetchRentals(garmentId: number) {
     setLoadingRentals(true)
@@ -86,7 +171,6 @@ export default function GarmentModal({ prenda: initialPrenda, onClose, onDelete 
       .update({ estado: 'finalizado' })
       .eq('id', rental.rental_id)
 
-    // Verificar si quedan alquileres activos
     const { data: activos } = await supabase
       .from('rental_items')
       .select('rental_id, rentals!inner(estado)')
@@ -148,35 +232,52 @@ export default function GarmentModal({ prenda: initialPrenda, onClose, onDelete 
     border: '1px solid var(--glass-border)',
   }
 
+  const inputStyle = {
+    background: 'var(--field-bg)',
+    border: '1px solid var(--field-border)',
+  }
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
       style={{ background: 'rgba(0,0,0,0.6)' }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
     >
-      <div
+      <motion.div
+        initial={{ opacity: 0, scale: 0.92 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.2, ease: 'easeOut' }}
         className="w-full max-w-[380px] md:max-w-[500px] max-h-[85vh] overflow-y-auto rounded-[28px] px-4 pt-5 pb-6 space-y-4"
         style={{
-          background: 'rgba(255,255,255,0.92)',
-          backdropFilter: 'blur(40px) saturate(180%)',
-          WebkitBackdropFilter: 'blur(40px) saturate(180%)',
-          border: '1px solid rgba(0,0,0,0.08)',
-          boxShadow: '0 20px 60px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.6)',
+          background: 'rgba(255,255,255,0.65)',
+          backdropFilter: 'blur(50px) saturate(200%)',
+          WebkitBackdropFilter: 'blur(50px) saturate(200%)',
+          border: '1px solid rgba(255,255,255,0.30)',
+          boxShadow: '0 20px 60px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.5)',
           scrollbarWidth: 'none',
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header sticky */}
+        {/* Header */}
         <div className="flex items-center justify-between sticky top-0 z-10 pt-3 -mt-5 pb-2">
           <button
-            onClick={onClose}
+            onClick={() => {
+              if (editing) {
+                setEditing(false)
+                setEditImagen(null)
+                setEditPreview(null)
+                setError(null)
+              } else {
+                onClose()
+              }
+            }}
             className="w-10 h-10 flex items-center justify-center rounded-full hover:brightness-125 transition-all"
             style={{
               background: 'var(--glass-strong)',
               border: '1px solid var(--glass-border)',
               color: 'var(--text-secondary)',
             }}
-            aria-label="Cerrar"
+            aria-label={editing ? 'Cancelar edicion' : 'Cerrar'}
           >
             <IconX className="w-5 h-5" />
           </button>
@@ -190,7 +291,7 @@ export default function GarmentModal({ prenda: initialPrenda, onClose, onDelete 
               color: 'rgba(0,0,0,0.55)',
             }}
           >
-            {prenda.estado}
+            {editing ? 'Editando' : prenda.estado}
           </span>
         </div>
 
@@ -199,26 +300,106 @@ export default function GarmentModal({ prenda: initialPrenda, onClose, onDelete 
           className="aspect-square rounded-[16px] flex items-center justify-center relative overflow-hidden"
           style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)' }}
         >
-          {prenda.imagen_url ? (
+          {editPreview ? (
+            <img src={editPreview} alt="Preview" className="w-full h-full object-cover" />
+          ) : prenda.imagen_url ? (
             <img src={prenda.imagen_url} alt={prenda.nombre} className="w-full h-full object-cover" loading="eager" />
           ) : (
             <span className="text-7xl opacity-30">👔</span>
           )}
+
+          {editing && (
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="absolute inset-0 flex flex-col items-center justify-center gap-2 transition-all"
+              style={{ background: 'rgba(0,0,0,0.35)' }}
+            >
+              <IconUpload className="w-8 h-8 text-white" />
+              <span className="text-sm font-medium text-white">Cambiar foto</span>
+            </button>
+          )}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleImageSelect}
+            className="hidden"
+          />
         </div>
 
         {/* Info basica */}
-        <div>
-          <p className="text-sm font-medium text-text-tertiary tracking-wide">{prenda.codigo}</p>
-          <h2 className="text-xl font-bold text-text-primary mt-1">{prenda.nombre}</h2>
-          {prenda.precio > 0 && (
-            <p className="text-sm font-medium mt-1" style={{ color: 'var(--accent)' }}>
-              {prenda.precio.toLocaleString('es-CO', { style: 'currency', currency: 'COP' })} / alquiler
-            </p>
-          )}
-        </div>
+        {editing ? (
+          <div className="space-y-3">
+            <div>
+              <label className="text-xs text-text-tertiary">Codigo</label>
+              <input
+                type="text"
+                value={editCodigo}
+                onChange={(e) => setEditCodigo(e.target.value)}
+                className="w-full rounded-[12px] px-4 py-2.5 text-sm text-text-primary mt-1 focus:outline-none focus:ring-2 focus:ring-accent/40"
+                style={inputStyle}
+              />
+            </div>
+            <div>
+              <label className="text-xs text-text-tertiary">Nombre</label>
+              <input
+                type="text"
+                value={editNombre}
+                onChange={(e) => setEditNombre(e.target.value)}
+                className="w-full rounded-[12px] px-4 py-2.5 text-sm text-text-primary mt-1 focus:outline-none focus:ring-2 focus:ring-accent/40"
+                style={inputStyle}
+              />
+            </div>
+            <div>
+              <label className="text-xs text-text-tertiary">Precio</label>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={editPrecio}
+                onChange={(e) => setEditPrecio(e.target.value.replace(/\D/g, ''))}
+                placeholder="50000"
+                className="w-full rounded-[12px] px-4 py-2.5 text-sm text-text-primary mt-1 focus:outline-none focus:ring-2 focus:ring-accent/40"
+                style={inputStyle}
+              />
+            </div>
+            <div>
+              <label className="text-xs text-text-tertiary">Categoria</label>
+              <div className="flex flex-wrap gap-2 mt-1">
+                {CATEGORIAS.map((cat) => (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => setEditCategoria(editCategoria === cat ? '' : cat)}
+                    className="px-3 py-1.5 rounded-full text-xs font-medium transition-all"
+                    style={{
+                      background: editCategoria === cat ? 'var(--accent-bg)' : 'var(--glass-bg)',
+                      border: editCategoria === cat ? '1px solid var(--accent-border)' : '1px solid var(--glass-border)',
+                      color: editCategoria === cat ? 'var(--accent)' : 'var(--text-secondary)',
+                    }}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div>
+            <p className="text-sm font-medium text-text-tertiary tracking-wide">{prenda.codigo}</p>
+            <h2 className="text-xl font-bold text-text-primary mt-1">{prenda.nombre}</h2>
+            {prenda.precio > 0 && (
+              <p className="text-sm font-medium mt-1" style={{ color: 'var(--accent)' }}>
+                {prenda.precio.toLocaleString('es-CO', { style: 'currency', currency: 'COP' })} / alquiler
+              </p>
+            )}
+            {prenda.categoria && (
+              <p className="text-xs text-text-tertiary mt-1">{prenda.categoria}</p>
+            )}
+          </div>
+        )}
 
         {/* Sin alquileres */}
-        {!loadingRentals && rentals.length === 0 && (
+        {!editing && !loadingRentals && rentals.length === 0 && (
           <div className="rounded-[16px] p-5 text-center" style={cardStyle}>
             <p className="text-4xl mb-2 opacity-30">✅</p>
             <p className="text-text-secondary font-medium">Sin alquileres registrados</p>
@@ -227,11 +408,11 @@ export default function GarmentModal({ prenda: initialPrenda, onClose, onDelete 
         )}
 
         {/* Lista de alquileres */}
-        {loadingRentals && (
+        {!editing && loadingRentals && (
           <p className="text-center text-text-secondary py-4">Cargando alquileres...</p>
         )}
 
-        {!loadingRentals && rentals.map((r) => {
+        {!editing && !loadingRentals && rentals.map((r) => {
           const vencido = new Date(r.fecha_fin) < new Date()
           const activo = r.estado === 'activo'
 
@@ -269,11 +450,11 @@ export default function GarmentModal({ prenda: initialPrenda, onClose, onDelete 
                   <IconCalendar className="w-4 h-4 text-text-secondary shrink-0" aria-hidden="true" />
                   <div className="flex gap-2 text-sm">
                     <span className="text-text-primary">
-                      {new Date(r.fecha_inicio).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })}
+                      {formatDateShort(r.fecha_inicio)}
                     </span>
                     <span className="text-text-tertiary">→</span>
                     <span className="font-medium" style={{ color: vencido && activo ? '#ff3b3b' : 'var(--text-primary)' }}>
-                      {new Date(r.fecha_fin).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })}
+                      {formatDateShort(r.fecha_fin)}
                     </span>
                   </div>
                 </div>
@@ -303,23 +484,45 @@ export default function GarmentModal({ prenda: initialPrenda, onClose, onDelete 
           <p className="text-sm text-center font-medium" style={{ color: 'var(--danger)' }}>{error}</p>
         )}
 
-        {/* Eliminar prenda */}
-        <button
-          onClick={handleDelete}
-          disabled={deleting}
-          className="w-full py-3 font-semibold rounded-[14px] transition-all hover:brightness-125 disabled:opacity-50 flex items-center justify-center gap-2"
-          style={{
-            border: '1px solid var(--danger-border)',
-            color: 'var(--danger)',
-            background: 'var(--danger-bg)',
-          }}
-        >
-          <IconTrash className="w-5 h-5" aria-hidden="true" />
-          {deleting ? 'Eliminando...' : 'Eliminar prenda'}
-        </button>
+        {/* Botones */}
+        {editing ? (
+          <>
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="w-full py-3 font-semibold rounded-[14px] transition-all hover:brightness-110 disabled:opacity-50 flex items-center justify-center gap-2 text-white"
+              style={{ background: 'var(--accent)' }}
+            >
+              <IconCheck className="w-5 h-5" aria-hidden="true" />
+              {saving ? 'Guardando...' : 'Guardar cambios'}
+            </button>
+            <button
+              onClick={handleDelete}
+              disabled={deleting}
+              className="w-full py-3 font-semibold rounded-[14px] transition-all hover:brightness-125 disabled:opacity-50 flex items-center justify-center gap-2"
+              style={{
+                border: '1px solid var(--danger-border)',
+                color: 'var(--danger)',
+                background: 'var(--danger-bg)',
+              }}
+            >
+              <IconTrash className="w-5 h-5" aria-hidden="true" />
+              {deleting ? 'Eliminando...' : 'Eliminar prenda'}
+            </button>
+          </>
+        ) : (
+          <button
+            onClick={() => setEditing(true)}
+            className="w-full py-3 font-semibold rounded-[14px] transition-all hover:brightness-110 flex items-center justify-center gap-2 text-white"
+            style={{ background: 'var(--accent)' }}
+          >
+            <IconEdit className="w-5 h-5" aria-hidden="true" />
+            Editar prenda
+          </button>
+        )}
 
         <style>{`div::-webkit-scrollbar { display: none; }`}</style>
-      </div>
+      </motion.div>
     </div>
   )
 }

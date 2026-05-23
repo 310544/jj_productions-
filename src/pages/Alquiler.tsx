@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { formatDate, formatDateRange } from '../lib/formatDate'
+import DatePicker from '../components/DatePicker'
 import type { Prenda } from '../types'
 import {
   IconUser, IconPhone, IconCalendar, IconX, IconPlus,
@@ -31,7 +33,9 @@ export default function Alquiler({ inPopup, onClose }: Props = {}) {
   const [error, setError] = useState<string | null>(null)
   const [showPopup, setShowPopup] = useState(false)
 
-  const [conflictingGarments, setConflictingGarments] = useState<Set<number>>(new Set())
+  const [conflictingGarments, setConflictingGarments] = useState<Set<number> | null>(null)
+  const [conflictingDates, setConflictingDates] = useState<Map<number, string>>(new Map())
+  const [checkingConflicts, setCheckingConflicts] = useState(false)
   const [showConflictPopup, setShowConflictPopup] = useState(false)
   const [conflictMessage, setConflictMessage] = useState('')
 
@@ -47,40 +51,58 @@ export default function Alquiler({ inPopup, onClose }: Props = {}) {
 
   // Revisar conflictos de fecha cada vez que cambian las fechas
   useEffect(() => {
-    if (!fechaInicio || !fechaFin) return
+    if (!fechaInicio || !fechaFin) {
+      setConflictingGarments(null)
+      return
+    }
     async function checkConflicts() {
+      setCheckingConflicts(true)
       const { data: items } = await supabase
         .from('rental_items')
         .select('garment_id, rentals!inner(fecha_inicio, fecha_fin, estado)')
-        .filter('rentals.estado', 'eq', 'activo')
-        .filter('rentals.fecha_inicio', 'lte', fechaFin)
-        .filter('rentals.fecha_fin', 'gte', fechaInicio)
+        .eq('rentals.estado', 'activo')
+        .lte('rentals.fecha_inicio', fechaFin)
+        .gte('rentals.fecha_fin', fechaInicio)
 
       const ids = new Set<number>()
+      const dates = new Map<number, string>()
       if (items) {
         for (const item of items) {
           ids.add(item.garment_id)
+          const rental = Array.isArray(item.rentals) ? item.rentals[0] : item.rentals
+          if (rental && !dates.has(item.garment_id)) {
+            dates.set(item.garment_id, formatDateRange(rental.fecha_inicio, rental.fecha_fin))
+          }
         }
       }
       setConflictingGarments(ids)
+      setConflictingDates(dates)
+      setCheckingConflicts(false)
     }
     checkConflicts()
   }, [fechaInicio, fechaFin])
 
   function isAvailableForDates(g: Prenda) {
+    if (conflictingGarments === null) return true
     return !conflictingGarments.has(g.id)
   }
 
   // Mostrar popup si alguna prenda ya seleccionada entra en conflicto con las fechas
   useEffect(() => {
+    if (conflictingGarments === null) return
     const conflictIds = selectedGarments
       .filter((g) => conflictingGarments.has(g.id))
       .map((g) => g.codigo)
     if (conflictIds.length > 0) {
-      setConflictMessage(`Traje ya alquilado en esa fecha: ${conflictIds.join(', ')}`)
+      const detalles = selectedGarments
+        .filter((g) => conflictingGarments.has(g.id))
+        .map((g) => {
+          const fechas = conflictingDates.get(g.id) || 'fecha no disponible'
+          return `${g.codigo}: ${fechas}`
+        })
+        .join('\n')
+      setConflictMessage(detalles)
       setShowConflictPopup(true)
-      // Quitar las prendas en conflicto de la seleccion
-      setSelectedGarments((prev) => prev.filter((g) => !conflictingGarments.has(g.id)))
     }
   }, [conflictingGarments])
 
@@ -92,8 +114,7 @@ export default function Alquiler({ inPopup, onClose }: Props = {}) {
         allGarments.filter(
           (g) =>
             g.codigo.toLowerCase().includes(q) &&
-            !selectedGarments.find((s) => s.id === g.id) &&
-            isAvailableForDates(g)
+            !selectedGarments.find((s) => s.id === g.id)
         )
       )
     } else {
@@ -102,6 +123,12 @@ export default function Alquiler({ inPopup, onClose }: Props = {}) {
   }
 
   function addGarment(g: Prenda) {
+    if (conflictingGarments !== null && conflictingGarments.has(g.id)) {
+      const fechas = conflictingDates.get(g.id) || 'fecha no disponible'
+      setConflictMessage(`${g.codigo} ya esta alquilado del ${fechas}`)
+      setShowConflictPopup(true)
+      return
+    }
     setSelectedGarments([...selectedGarments, g])
     setSearchQuery('')
     setSearchResults([])
@@ -157,9 +184,9 @@ export default function Alquiler({ inPopup, onClose }: Props = {}) {
       .from('rental_items')
       .select('garment_id, rentals!inner(fecha_inicio, fecha_fin, estado)')
       .in('garment_id', garmentIds)
-      .filter('rentals.estado', 'eq', 'activo')
-      .filter('rentals.fecha_inicio', 'lte', fechaFin)
-      .filter('rentals.fecha_fin', 'gte', fechaInicio)
+      .eq('rentals.estado', 'activo')
+      .lte('rentals.fecha_inicio', fechaFin)
+      .gte('rentals.fecha_fin', fechaInicio)
 
     if (conflicts && conflicts.length > 0) {
       const ids = conflicts.map((c: any) => c.garment_id)
@@ -517,6 +544,10 @@ export default function Alquiler({ inPopup, onClose }: Props = {}) {
                 </div>
               )}
             </div>
+          ) : checkingConflicts ? (
+            <span className="inline-flex items-center gap-1 px-3 py-1.5 text-sm text-text-tertiary">
+              Verificando disponibilidad...
+            </span>
           ) : (
             <button
               onClick={() => setShowSearch(true)}
@@ -541,30 +572,36 @@ export default function Alquiler({ inPopup, onClose }: Props = {}) {
         </label>
         <div className="grid grid-cols-2 gap-4">
           <div className="min-w-0">
-            <span className="text-xs text-text-tertiary">Alquiler</span>
-            <input
-              type="date"
+            <DatePicker
+              label="Alquiler"
               value={fechaInicio}
-              onChange={(e) => setFechaInicio(e.target.value)}
-              className="w-full rounded-[12px] px-2 py-3 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/40 mt-1"
-              style={inputStyle}
+              onChange={setFechaInicio}
+              placeholder="Inicio"
             />
           </div>
           <div className="min-w-0">
-            <span className="text-xs text-text-tertiary">Devolucion</span>
-            <input
-              type="date"
+            <DatePicker
+              label="Devolucion"
               value={fechaFin}
-              onChange={(e) => setFechaFin(e.target.value)}
-              className="w-full rounded-[12px] px-2 py-3 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/40 mt-1"
-              style={inputStyle}
+              onChange={setFechaFin}
+              placeholder="Devolucion"
+              min={fechaInicio}
+              align="right"
             />
           </div>
         </div>
       </div>
 
       {/* Totales */}
-      <div className="rounded-[16px] p-4 space-y-3" style={cardStyle}>
+      <div
+        className="rounded-[16px] p-4 space-y-3"
+        style={{
+          background: 'rgba(255,255,255,0.65)',
+          backdropFilter: 'blur(50px) saturate(200%)',
+          WebkitBackdropFilter: 'blur(50px) saturate(200%)',
+          border: '1px solid rgba(0,0,0,0.10)',
+        }}
+      >
         <h3 className="font-semibold text-text-primary text-sm">Totales</h3>
 
         <div>
@@ -576,7 +613,12 @@ export default function Alquiler({ inPopup, onClose }: Props = {}) {
             onChange={handleTotalChange}
             placeholder="50.000"
             className="w-full rounded-[12px] px-4 py-2.5 text-sm text-text-primary mt-1 focus:outline-none focus:ring-2 focus:ring-accent/40"
-            style={inputStyle}
+            style={{
+              background: 'rgba(255,255,255,0.65)',
+              backdropFilter: 'blur(50px) saturate(200%)',
+              WebkitBackdropFilter: 'blur(50px) saturate(200%)',
+              border: '1px solid rgba(0,0,0,0.10)',
+            }}
           />
         </div>
 
@@ -593,7 +635,10 @@ export default function Alquiler({ inPopup, onClose }: Props = {}) {
               placeholder="0"
               className="w-full rounded-[12px] px-4 py-2.5 text-sm font-medium mt-1 focus:outline-none focus:ring-2 focus:ring-success/40"
               style={{
-                ...inputStyle,
+                background: 'rgba(255,255,255,0.65)',
+                backdropFilter: 'blur(50px) saturate(200%)',
+                WebkitBackdropFilter: 'blur(50px) saturate(200%)',
+                border: '1px solid rgba(0,0,0,0.10)',
                 color: 'var(--success)',
               }}
             />
@@ -605,7 +650,10 @@ export default function Alquiler({ inPopup, onClose }: Props = {}) {
             <div
               className="w-full rounded-[12px] px-4 py-2.5 text-sm font-medium mt-1"
               style={{
-                ...inputStyle,
+                background: 'rgba(255,255,255,0.65)',
+                backdropFilter: 'blur(50px) saturate(200%)',
+                WebkitBackdropFilter: 'blur(50px) saturate(200%)',
+                border: '1px solid rgba(0,0,0,0.10)',
                 color: 'var(--danger)',
               }}
             >

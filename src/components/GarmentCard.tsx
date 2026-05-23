@@ -1,5 +1,6 @@
 import type { Prenda } from '../types'
 import { IconHeart, IconHeartFilled } from '@tabler/icons-react'
+import { formatDateShort } from '../lib/formatDate'
 
 interface Props {
   prenda: Prenda
@@ -8,18 +9,16 @@ interface Props {
   onToggleFavorite: (id: number) => void
 }
 
-function formatFecha(iso?: string) {
-  if (!iso) return ''
-  return new Date(iso).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })
-}
-
 export default function GarmentCard({ prenda, onSelect, isFavorite, onToggleFavorite }: Props) {
   const ocupado = prenda.estado === 'ocupado'
   const fechas = prenda.fechas_ocupado || []
 
   return (
-    <button
+    <div
       onClick={() => onSelect(prenda)}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { onSelect(prenda) } }}
+      role="button"
+      tabIndex={0}
       className="rounded-[16px] overflow-hidden flex flex-col p-2 text-left w-full cursor-pointer"
       style={{
         background: 'var(--glass-bg)',
@@ -54,7 +53,7 @@ export default function GarmentCard({ prenda, onSelect, isFavorite, onToggleFavo
                 WebkitBackdropFilter: 'blur(8px)',
                 color: '#ff3b3b',
               }}>
-                {formatFecha(f.fecha_inicio)} - {formatFecha(f.fecha_fin)}
+                {formatDateShort(f.fecha_inicio)} - {formatDateShort(f.fecha_fin)}
               </p>
             ))}
             {/* Línea diagonal \ de esquina superior-izq a inferior-der */}
@@ -121,17 +120,17 @@ export default function GarmentCard({ prenda, onSelect, isFavorite, onToggleFavo
       <div className="px-1 pt-2 pb-1 flex flex-col gap-0.5">
         {/* Código */}
         <p
-          className="text-xs font-bold tracking-widest uppercase"
+          className="text-sm font-extrabold tracking-widest uppercase"
           style={{ color: ocupado ? 'var(--text-secondary)' : 'var(--accent)' }}
         >
           {prenda.codigo}
         </p>
 
         {/* Nombre */}
-        <p className="text-sm font-semibold truncate" style={{ color: 'var(--text-primary)' }}>
+        <p className="text-xs font-medium truncate text-text-secondary">
           {prenda.nombre}
         </p>
       </div>
-    </button>
+    </div>
   )
 }

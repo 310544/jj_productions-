@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useLocation } from 'react-router-dom'
-import { IconFileInvoice, IconPlus, IconChartPie } from '@tabler/icons-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { IconFileInvoice, IconPlus, IconChartPie, IconX } from '@tabler/icons-react'
 import AgregarPrenda from '../pages/AgregarPrenda'
 import Alquiler from '../pages/Alquiler'
 
@@ -43,15 +44,15 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
             <button
               onClick={() => setPopup('agregar')}
-              className="w-12 h-12 flex items-center justify-center rounded-full transition-all hover:scale-110"
+              className="w-11 h-11 flex items-center justify-center rounded-full transition-all hover:scale-110"
               style={{
                 background: 'var(--accent)',
                 color: '#fff',
-                boxShadow: '0 4px 20px rgba(0,0,0,0.20)',
+                boxShadow: '0 4px 16px rgba(0,0,0,0.18)',
               }}
               aria-label="Agregar"
             >
-              <IconPlus className="w-6 h-6" aria-hidden="true" />
+              <IconPlus className="w-5 h-5" aria-hidden="true" />
             </button>
 
             <button
@@ -71,54 +72,106 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       )}
 
       {/* Popup Alquiler */}
-      {popup === 'alquiler' && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ background: 'rgba(0,0,0,0.6)' }}
-          onClick={(e) => { if (e.target === e.currentTarget) setPopup(null) }}
-        >
-          <div
-            className="w-full max-w-[430px] max-h-[90vh] overflow-y-auto rounded-[28px] px-4 pt-5 pb-6 space-y-4"
-            style={{
-              background: 'rgba(255,255,255,0.92)',
-              backdropFilter: 'blur(40px) saturate(180%)',
-              WebkitBackdropFilter: 'blur(40px) saturate(180%)',
-              border: '1px solid rgba(0,0,0,0.08)',
-              boxShadow: '0 20px 60px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.6)',
-              scrollbarWidth: 'none',
-            }}
-            onClick={(e) => e.stopPropagation()}
+      <AnimatePresence>
+        {popup === 'alquiler' && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            style={{ background: 'rgba(0,0,0,0.6)' }}
+            onClick={(e) => { if (e.target === e.currentTarget) setPopup(null) }}
           >
-            <Alquiler inPopup onClose={() => setPopup(null)} />
-            <style>{`div::-webkit-scrollbar { display: none; }`}</style>
-          </div>
-        </div>
-      )}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.92 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.92 }}
+              transition={{ duration: 0.2, ease: 'easeOut' }}
+              className="relative w-full max-w-[430px]"
+            >
+              <button
+                onClick={() => setPopup(null)}
+                className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-full hover:brightness-95 transition-all z-20"
+                style={{
+                  background: '#ffffff',
+                  color: 'var(--text-secondary)',
+                  boxShadow: '0 4px 14px rgba(0,0,0,0.15)',
+                }}
+                aria-label="Cerrar"
+              >
+                <IconX className="w-4 h-4" />
+              </button>
+              <div
+                className="w-full max-h-[90vh] overflow-y-auto rounded-[28px] px-4 pt-5 pb-6 space-y-4"
+                style={{
+                  background: 'rgba(255,255,255,0.65)',
+                  backdropFilter: 'blur(50px) saturate(200%)',
+                  WebkitBackdropFilter: 'blur(50px) saturate(200%)',
+                  border: '1px solid rgba(255,255,255,0.30)',
+                  boxShadow: '0 20px 60px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.5)',
+                  scrollbarWidth: 'none',
+                }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <Alquiler inPopup onClose={() => setPopup(null)} />
+                <style>{`div::-webkit-scrollbar { display: none; }`}</style>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Popup Agregar */}
-      {popup === 'agregar' && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ background: 'rgba(0,0,0,0.6)' }}
-          onClick={(e) => { if (e.target === e.currentTarget) setPopup(null) }}
-        >
-          <div
-            className="w-full max-w-[430px] max-h-[90vh] overflow-y-auto rounded-[28px] px-4 pt-5 pb-6 space-y-4"
-            style={{
-              background: 'rgba(255,255,255,0.92)',
-              backdropFilter: 'blur(40px) saturate(180%)',
-              WebkitBackdropFilter: 'blur(40px) saturate(180%)',
-              border: '1px solid rgba(0,0,0,0.08)',
-              boxShadow: '0 20px 60px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.6)',
-              scrollbarWidth: 'none',
-            }}
-            onClick={(e) => e.stopPropagation()}
+      <AnimatePresence>
+        {popup === 'agregar' && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            style={{ background: 'rgba(0,0,0,0.6)' }}
+            onClick={(e) => { if (e.target === e.currentTarget) setPopup(null) }}
           >
-            <AgregarPrenda inPopup onClose={() => setPopup(null)} />
-            <style>{`div::-webkit-scrollbar { display: none; }`}</style>
-          </div>
-        </div>
-      )}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.92 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.92 }}
+              transition={{ duration: 0.2, ease: 'easeOut' }}
+              className="relative w-full max-w-[430px]"
+            >
+              <button
+                onClick={() => setPopup(null)}
+                className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-full hover:brightness-95 transition-all z-20"
+                style={{
+                  background: '#ffffff',
+                  color: 'var(--text-secondary)',
+                  boxShadow: '0 4px 14px rgba(0,0,0,0.15)',
+                }}
+                aria-label="Cerrar"
+              >
+                <IconX className="w-4 h-4" />
+              </button>
+              <div
+                className="w-full max-h-[90vh] overflow-y-auto rounded-[28px] px-4 pt-5 pb-6 space-y-4"
+                style={{
+                  background: 'rgba(255,255,255,0.65)',
+                  backdropFilter: 'blur(50px) saturate(200%)',
+                  WebkitBackdropFilter: 'blur(50px) saturate(200%)',
+                  border: '1px solid rgba(255,255,255,0.30)',
+                  boxShadow: '0 20px 60px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.5)',
+                  scrollbarWidth: 'none',
+                }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <AgregarPrenda inPopup onClose={() => setPopup(null)} />
+                <style>{`div::-webkit-scrollbar { display: none; }`}</style>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

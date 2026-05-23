@@ -37,9 +37,9 @@ export const usePrendasStore = create<PrendasState>((set, get) => ({
     // Obtener TODAS las fechas de alquileres activos para cada prenda
     const { data: rentals } = await supabase
       .from('rental_items')
-      .select('garment_id, rentals!inner(fecha_inicio, fecha_fin)')
+      .select('garment_id, rentals!inner(fecha_inicio, fecha_fin, estado)')
       .in('garment_id', garments.map((g: Prenda) => g.id))
-      .filter('rentals.estado', 'eq', 'activo')
+      .eq('rentals.estado', 'activo')
 
     const fechasPorId: Record<number, { fecha_inicio: string; fecha_fin: string }[]> = {}
     if (rentals) {

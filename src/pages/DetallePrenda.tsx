@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { formatDate } from '../lib/formatDate'
 import type { Prenda } from '../types'
 import {
   IconArrowLeft, IconUser, IconPhone, IconCalendar,
@@ -270,14 +271,14 @@ export default function DetallePrenda() {
               <IconCalendar className="w-5 h-5 text-text-secondary shrink-0" aria-hidden="true" />
               <div className="flex gap-2 text-sm">
                 <span className="text-text-primary">
-                  {new Date(rentalInfo.fecha_inicio).toLocaleDateString('es-AR')}
+                  {formatDate(rentalInfo.fecha_inicio)}
                 </span>
                 <span className="text-text-tertiary">→</span>
                 <span
                   className="font-medium"
                   style={{ color: fechaVencida ? 'var(--danger)' : 'var(--text-primary)' }}
                 >
-                  {new Date(rentalInfo.fecha_fin).toLocaleDateString('es-AR')}
+                  {formatDate(rentalInfo.fecha_fin)}
                 </span>
               </div>
             </div>
