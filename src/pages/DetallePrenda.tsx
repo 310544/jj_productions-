@@ -214,11 +214,11 @@ export default function DetallePrenda() {
         <span
           className="absolute top-3 left-3 px-3 py-1 rounded-full text-sm font-semibold"
           style={{
-            background: 'rgba(255,255,255,0.08)',
+            background: 'rgba(0,0,0,0.04)',
             backdropFilter: 'blur(8px)',
             WebkitBackdropFilter: 'blur(8px)',
-            border: '1px solid rgba(255,255,255,0.12)',
-            color: 'rgba(255,255,255,0.7)',
+            border: '1px solid rgba(0,0,0,0.08)',
+            color: 'rgba(0,0,0,0.55)',
           }}
         >
           {prenda.estado}

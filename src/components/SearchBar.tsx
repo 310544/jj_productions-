@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { IconSearch, IconBellFilled, IconX } from '@tabler/icons-react'
+import { IconSearch, IconBell, IconX } from '@tabler/icons-react'
 
 interface Props {
   value: string
@@ -49,17 +49,26 @@ export default function SearchBar({ value, onChange }: Props) {
           onClick={() => setOpen(!open)}
           className="w-11 h-11 flex items-center justify-center rounded-full shrink-0 relative"
           style={{
-            background: 'rgba(255,255,255,0.05)',
-            border: '1px solid rgba(255,255,255,0.09)',
+            background: 'rgba(255, 255, 255, 0.06)',
+            backdropFilter: 'blur(20px) saturate(180%)',
+            WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+            border: '1px solid rgba(255, 255, 255, 0.18)',
+            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.22), 0 4px 16px rgba(0,0,0,0.25)',
             color: 'var(--text-secondary)',
           }}
           aria-label="Notificaciones"
         >
-          <IconBellFilled className="w-5 h-5" />
-          <span
-            className="absolute top-2 right-2.5 w-2 h-2 rounded-full"
-            style={{ background: 'var(--danger)' }}
-          />
+          <span className="bell-swing relative inline-flex">
+            <IconBell
+              className="w-5 h-5 bell-shake"
+              stroke={1.5}
+              style={{ color: 'rgba(255,255,255,0.95)' }}
+            />
+            <span
+              className="absolute -top-0.5 right-0 w-2 h-2 rounded-full"
+              style={{ background: '#F97316' }}
+            />
+          </span>
         </button>
 
         {/* Popup */}

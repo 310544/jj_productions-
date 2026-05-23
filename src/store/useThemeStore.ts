@@ -10,7 +10,7 @@ interface ThemeState {
 function getInitialTheme(): Theme {
   const stored = localStorage.getItem('rentatraje-theme')
   if (stored === 'dark' || stored === 'light') return stored
-  return 'dark'
+  return 'light'
 }
 
 function applyTheme(theme: Theme) {

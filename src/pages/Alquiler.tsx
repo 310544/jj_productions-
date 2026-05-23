@@ -634,17 +634,17 @@ export default function Alquiler({ inPopup, onClose }: Props = {}) {
       {showConflictPopup && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ background: 'rgba(0,0,0,0.6)' }}
+          style={{ background: 'var(--overlay)' }}
           onClick={() => setShowConflictPopup(false)}
         >
           <div
             className="w-full max-w-[340px] rounded-[24px] px-5 pt-6 pb-5 text-center space-y-4"
             style={{
-              background: 'rgba(15,15,20,0.85)',
+              background: 'rgba(255,255,255,0.92)',
               backdropFilter: 'blur(30px)',
               WebkitBackdropFilter: 'blur(30px)',
-              border: '1px solid rgba(255,255,255,0.10)',
-              boxShadow: '0 20px 60px rgba(0,0,0,0.6)',
+              border: '1px solid rgba(0,0,0,0.08)',
+              boxShadow: '0 20px 60px rgba(0,0,0,0.12)',
             }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -679,17 +679,17 @@ export default function Alquiler({ inPopup, onClose }: Props = {}) {
       {showPopup && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ background: 'rgba(0,0,0,0.6)' }}
+          style={{ background: 'var(--overlay)' }}
           onClick={(e) => { if (e.target === e.currentTarget) setShowPopup(false) }}
         >
           <div
             className="w-full max-w-[380px] rounded-[28px] px-4 pt-5 pb-6 space-y-4"
             style={{
-              background: 'rgba(15,15,20,0.78)',
+              background: 'rgba(255,255,255,0.92)',
               backdropFilter: 'blur(40px) saturate(180%)',
               WebkitBackdropFilter: 'blur(40px) saturate(180%)',
-              border: '1px solid rgba(255,255,255,0.10)',
-              boxShadow: '0 20px 60px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.06)',
+              border: '1px solid rgba(0,0,0,0.08)',
+              boxShadow: '0 20px 60px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.6)',
             }}
             onClick={(e) => e.stopPropagation()}
           >

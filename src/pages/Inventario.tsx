@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import GarmentCard from '../components/GarmentCard'
-import SearchBar from '../components/SearchBar'
+import Hero from '../components/Hero'
 import CategoryFilter from '../components/CategoryFilter'
 import GarmentModal from '../components/GarmentModal'
 import { usePrendasStore } from '../store/usePrendasStore'
@@ -11,6 +11,19 @@ export default function Inventario() {
   const [search, setSearch] = useState('')
   const [categoria, setCategoria] = useState<Categoria | null>(null)
   const [selectedPrenda, setSelectedPrenda] = useState<Prenda | null>(null)
+  const [favorites, setFavorites] = useState<Set<number>>(new Set())
+
+  function toggleFavorite(id: number) {
+    setFavorites((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) {
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
+      return next
+    })
+  }
 
   useEffect(() => {
     fetchPrendas()
@@ -26,9 +39,15 @@ export default function Inventario() {
 
   return (
     <div className="space-y-4">
-      <SearchBar value={search} onChange={setSearch} />
+      <Hero
+        searchValue={search}
+        onSearchChange={setSearch}
+      />
 
+      <p className="text-sm font-bold text-text-primary">Category</p>
       <CategoryFilter active={categoria} onChange={setCategoria} />
+
+      <p className="text-sm font-bold text-text-primary">Popular</p>
 
       {error && (
         <p className="text-center py-12" style={{ color: 'var(--danger)' }}>
@@ -47,7 +66,13 @@ export default function Inventario() {
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {filtered.map((prenda) => (
-          <GarmentCard key={prenda.id} prenda={prenda} onSelect={setSelectedPrenda} />
+          <GarmentCard
+            key={prenda.id}
+            prenda={prenda}
+            onSelect={setSelectedPrenda}
+            isFavorite={favorites.has(prenda.id)}
+            onToggleFavorite={toggleFavorite}
+          />
         ))}
       </div>
 

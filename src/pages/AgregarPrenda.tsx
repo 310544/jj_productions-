@@ -158,7 +158,7 @@ export default function AgregarPrenda({ inPopup, onClose }: Props = {}) {
         onClick={() => fileInputRef.current?.click()}
         className="border-2 border-dashed rounded-[16px] aspect-square flex flex-col items-center justify-center cursor-pointer transition-all"
         style={{
-          borderColor: preview ? 'var(--accent)' : 'rgba(255,255,255,0.18)',
+          borderColor: preview ? 'var(--accent)' : 'rgba(0,0,0,0.12)',
           background: 'var(--glass-bg)',
         }}
       >
@@ -257,11 +257,11 @@ export default function AgregarPrenda({ inPopup, onClose }: Props = {}) {
                 onClick={(e) => e.stopPropagation()}
                 className="absolute top-full mt-1 left-0 right-0 rounded-[12px] py-1 z-20"
                 style={{
-                  background: 'rgba(20,20,25,0.95)',
+                  background: '#ffffff',
                   backdropFilter: 'blur(20px)',
                   WebkitBackdropFilter: 'blur(20px)',
-                  border: '1px solid rgba(255,255,255,0.10)',
-                  boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+                  border: '1px solid rgba(0,0,0,0.08)',
+                  boxShadow: '0 8px 32px rgba(0,0,0,0.10)',
                 }}
               >
                 {TIPOS.map((t) => (
@@ -310,11 +310,11 @@ export default function AgregarPrenda({ inPopup, onClose }: Props = {}) {
                 onClick={(e) => e.stopPropagation()}
                 className="absolute top-full mt-1 left-0 right-0 rounded-[12px] py-1 z-20"
                 style={{
-                  background: 'rgba(20,20,25,0.95)',
+                  background: '#ffffff',
                   backdropFilter: 'blur(20px)',
                   WebkitBackdropFilter: 'blur(20px)',
-                  border: '1px solid rgba(255,255,255,0.10)',
-                  boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+                  border: '1px solid rgba(0,0,0,0.08)',
+                  boxShadow: '0 8px 32px rgba(0,0,0,0.10)',
                 }}
               >
                 {CATEGORIAS.map((c) => (

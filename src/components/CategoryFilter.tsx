@@ -35,13 +35,13 @@ export default function CategoryFilter({ active, onChange }: Props) {
             style={{
               borderRadius: '999px',
               background: isActive
-                ? 'rgba(212, 160, 23, 0.18)'
-                : 'rgba(255, 255, 255, 0.06)',
+                ? 'var(--accent-bg)'
+                : 'var(--glass-bg)',
               backdropFilter: 'blur(12px)',
               WebkitBackdropFilter: 'blur(12px)',
               border: isActive
-                ? '1px solid rgba(212, 160, 23, 0.6)'
-                : '1px solid rgba(255, 255, 255, 0.12)',
+                ? '1px solid var(--accent-border)'
+                : '1px solid var(--glass-border)',
               transition: 'all 0.2s ease',
             }}
           >

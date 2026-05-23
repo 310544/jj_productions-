@@ -1,8 +1,11 @@
 import type { Prenda } from '../types'
+import { IconHeart, IconHeartFilled } from '@tabler/icons-react'
 
 interface Props {
   prenda: Prenda
   onSelect: (prenda: Prenda) => void
+  isFavorite: boolean
+  onToggleFavorite: (id: number) => void
 }
 
 function formatFecha(iso?: string) {
@@ -10,7 +13,7 @@ function formatFecha(iso?: string) {
   return new Date(iso).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })
 }
 
-export default function GarmentCard({ prenda, onSelect }: Props) {
+export default function GarmentCard({ prenda, onSelect, isFavorite, onToggleFavorite }: Props) {
   const ocupado = prenda.estado === 'ocupado'
   const fechas = prenda.fechas_ocupado || []
 
@@ -19,14 +22,14 @@ export default function GarmentCard({ prenda, onSelect }: Props) {
       onClick={() => onSelect(prenda)}
       className="rounded-[16px] overflow-hidden flex flex-col p-2 text-left w-full cursor-pointer"
       style={{
-        background: '#1a1a1f',
-        border: '1px solid rgba(255,255,255,0.08)',
+        background: 'var(--glass-bg)',
+        border: '1px solid var(--glass-border)',
       }}
     >
       {/* Recuadro interior con la foto */}
       <div
         className="relative w-full aspect-square overflow-hidden rounded-[12px]"
-        style={{ background: '#111114' }}
+        style={{ background: '#f1f1f3' }}
       >
         {prenda.imagen_url ? (
           <img
@@ -81,15 +84,37 @@ export default function GarmentCard({ prenda, onSelect }: Props) {
         <span
           className="absolute top-2 left-2 px-2.5 py-0.5 rounded-full text-[10px] font-semibold"
           style={{
-            background: 'rgba(255,255,255,0.08)',
+            background: 'rgba(0,0,0,0.04)',
             backdropFilter: 'blur(8px)',
             WebkitBackdropFilter: 'blur(8px)',
-            border: '1px solid rgba(255,255,255,0.12)',
-            color: 'rgba(255,255,255,0.7)',
+            border: '1px solid rgba(0,0,0,0.08)',
+            color: 'rgba(0,0,0,0.55)',
           }}
         >
           {prenda.estado}
         </span>
+
+        {/* Boton favorito */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            onToggleFavorite(prenda.id)
+          }}
+          className="absolute top-2 right-2 w-8 h-8 flex items-center justify-center rounded-full transition-all hover:scale-110"
+          style={{
+            background: 'rgba(0,0,0,0.04)',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+            border: '1px solid rgba(0,0,0,0.08)',
+          }}
+          aria-label={isFavorite ? 'Quitar de favoritos' : 'Agregar a favoritos'}
+        >
+          {isFavorite ? (
+            <IconHeartFilled className="w-3.5 h-3.5" style={{ color: '#ef4444' }} />
+          ) : (
+            <IconHeart className="w-3.5 h-3.5" style={{ color: 'rgba(0,0,0,0.45)' }} />
+          )}
+        </button>
       </div>
 
       {/* Info abajo */}

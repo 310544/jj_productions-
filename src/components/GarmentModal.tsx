@@ -157,11 +157,11 @@ export default function GarmentModal({ prenda: initialPrenda, onClose, onDelete 
       <div
         className="w-full max-w-[380px] md:max-w-[500px] max-h-[85vh] overflow-y-auto rounded-[28px] px-4 pt-5 pb-6 space-y-4"
         style={{
-          background: 'rgba(15,15,20,0.75)',
+          background: 'rgba(255,255,255,0.92)',
           backdropFilter: 'blur(40px) saturate(180%)',
           WebkitBackdropFilter: 'blur(40px) saturate(180%)',
-          border: '1px solid rgba(255,255,255,0.10)',
-          boxShadow: '0 20px 60px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.06)',
+          border: '1px solid rgba(0,0,0,0.08)',
+          boxShadow: '0 20px 60px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.6)',
           scrollbarWidth: 'none',
         }}
         onClick={(e) => e.stopPropagation()}
@@ -183,11 +183,11 @@ export default function GarmentModal({ prenda: initialPrenda, onClose, onDelete 
           <span
             className="px-3 py-1 rounded-full text-xs font-semibold"
             style={{
-              background: 'rgba(255,255,255,0.08)',
+              background: 'rgba(0,0,0,0.04)',
               backdropFilter: 'blur(8px)',
               WebkitBackdropFilter: 'blur(8px)',
-              border: '1px solid rgba(255,255,255,0.12)',
-              color: 'rgba(255,255,255,0.7)',
+              border: '1px solid rgba(0,0,0,0.08)',
+              color: 'rgba(0,0,0,0.55)',
             }}
           >
             {prenda.estado}
