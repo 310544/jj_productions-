@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { formatDate, formatDateRange } from '../lib/formatDate'
+import { formatDateRange } from '../lib/formatDate'
 import DatePicker from '../components/DatePicker'
 import type { Prenda } from '../types'
 import {
@@ -82,12 +82,7 @@ export default function Alquiler({ inPopup, onClose }: Props = {}) {
     checkConflicts()
   }, [fechaInicio, fechaFin])
 
-  function isAvailableForDates(g: Prenda) {
-    if (conflictingGarments === null) return true
-    return !conflictingGarments.has(g.id)
-  }
-
-  // Mostrar popup si alguna prenda ya seleccionada entra en conflicto con las fechas
+// Mostrar popup si alguna prenda ya seleccionada entra en conflicto con las fechas
   useEffect(() => {
     if (conflictingGarments === null) return
     const conflictIds = selectedGarments

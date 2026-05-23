@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { supabase } from '../lib/supabase'
 import { formatDateShort } from '../lib/formatDate'
 import type { Prenda, Categoria } from '../types'

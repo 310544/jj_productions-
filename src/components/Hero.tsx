@@ -23,8 +23,6 @@ export default function Hero({ searchValue, onSearchChange }: HeroProps) {
   const popupRef = useRef<HTMLDivElement>(null)
   const [notifications, setNotifications] = useState<Notification[]>([])
   const { theme, toggle } = useThemeStore()
-  const [loadingNotifs, setLoadingNotifs] = useState(false)
-
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (popupRef.current && !popupRef.current.contains(e.target as Node)) {
@@ -39,7 +37,6 @@ export default function Hero({ searchValue, onSearchChange }: HeroProps) {
   }, [open])
 
   async function fetchNotifications() {
-    setLoadingNotifs(true)
     const hoy = new Date().toISOString().split('T')[0]
 
     const { data: items } = await supabase
@@ -50,7 +47,6 @@ export default function Hero({ searchValue, onSearchChange }: HeroProps) {
 
     if (!items || items.length === 0) {
       setNotifications([])
-      setLoadingNotifs(false)
       return
     }
 
@@ -91,7 +87,6 @@ export default function Hero({ searchValue, onSearchChange }: HeroProps) {
     }
     notifs.sort((a, b) => a.fecha_fin.localeCompare(b.fecha_fin))
     setNotifications(notifs)
-    setLoadingNotifs(false)
   }
 
   const hasNotifications = notifications.length > 0

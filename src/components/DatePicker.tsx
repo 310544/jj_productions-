@@ -15,7 +15,7 @@ interface Props {
   align?: 'left' | 'right'
 }
 
-export default function DatePicker({ value, onChange, label, placeholder = 'Seleccionar fecha', min, align = 'left' }: Props) {
+export default function DatePicker({ value, onChange, label, placeholder = 'Seleccionar fecha', min }: Props) {
   const [open, setOpen] = useState(false)
   const [viewDate, setViewDate] = useState(() => value ? new Date(value + 'T00:00:00') : new Date())
   const ref = useRef<HTMLDivElement>(null)
