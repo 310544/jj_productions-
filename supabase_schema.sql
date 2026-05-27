@@ -65,3 +65,70 @@ CREATE POLICY "Permitir todo en rental_items" ON rental_items FOR ALL TO anon US
 -- ============================================
 -- Ejecutar esto por separado en SQL Editor:
 -- INSERT INTO storage.buckets (id, name, public) VALUES ('prendas', 'prendas', true);
+
+-- ============================================
+-- MIGRACIONES - Mejora de Factura/Alquiler
+-- Ejecutar en Supabase SQL Editor
+-- ============================================
+
+-- 5. Nuevas columnas en customers
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS cedula TEXT;
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS direccion TEXT;
+
+-- 6. Nuevas columnas en rentals
+ALTER TABLE rentals ADD COLUMN IF NOT EXISTS codigo TEXT;
+ALTER TABLE rentals ADD COLUMN IF NOT EXISTS vendedor TEXT;
+ALTER TABLE rentals ADD COLUMN IF NOT EXISTS cedula TEXT;
+ALTER TABLE rentals ADD COLUMN IF NOT EXISTS direccion TEXT;
+ALTER TABLE rentals ADD COLUMN IF NOT EXISTS quien_entrega TEXT;
+
+-- Rellenar códigos para registros existentes
+UPDATE rentals SET codigo = 'FAC-' || LPAD(id::TEXT, 3, '0') WHERE codigo IS NULL;
+ALTER TABLE rentals ALTER COLUMN codigo SET NOT NULL;
+ALTER TABLE rentals ADD CONSTRAINT rentals_codigo_unique UNIQUE (codigo);
+
+-- 7. Nueva columna tipo en rental_items
+ALTER TABLE rental_items ADD COLUMN IF NOT EXISTS tipo TEXT NOT NULL DEFAULT 'alquiler'
+  CHECK (tipo IN ('alquiler', 'venta'));
+
+-- 8. Nuevo estado 'vendido' en garments
+ALTER TABLE garments DROP CONSTRAINT IF EXISTS garments_estado_check;
+ALTER TABLE garments ADD CONSTRAINT garments_estado_check
+  CHECK (estado IN ('disponible', 'ocupado', 'vendido'));
+
+-- 9. Nueva tabla pagos (abonos)
+CREATE TABLE IF NOT EXISTS pagos (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  rental_id BIGINT NOT NULL REFERENCES rentals(id) ON DELETE CASCADE,
+  monto DECIMAL(10,2) NOT NULL CHECK (monto > 0),
+  fecha DATE NOT NULL DEFAULT CURRENT_DATE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+ALTER TABLE pagos ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Permitir todo en pagos" ON pagos FOR ALL TO anon USING (true) WITH CHECK (true);
+
+-- 10. Secuencia y trigger para código secuencial automático (FAC-001, FAC-002...)
+DO $$
+DECLARE
+  max_num INTEGER;
+BEGIN
+  SELECT COALESCE(MAX(NULLIF(REGEXP_REPLACE(codigo, '\D', '', 'g'), '')::INTEGER), 0)
+    INTO max_num FROM rentals;
+  EXECUTE 'CREATE SEQUENCE IF NOT EXISTS rental_codigo_seq START ' || (max_num + 1);
+END $$;
+
+CREATE OR REPLACE FUNCTION set_rental_codigo()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.codigo IS NULL OR NEW.codigo = '' THEN
+    NEW.codigo := 'FAC-' || LPAD(nextval('rental_codigo_seq')::TEXT, 3, '0');
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_rental_codigo ON rentals;
+CREATE TRIGGER trg_rental_codigo
+  BEFORE INSERT ON rentals
+  FOR EACH ROW
+  EXECUTE FUNCTION set_rental_codigo();

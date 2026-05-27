@@ -7,10 +7,14 @@ interface CategoryItem {
 }
 
 const categories: CategoryItem[] = [
-  { key: 'Hombre', label: 'Hombre', image: '/men.png.jpg' },
-  { key: 'Mujer',  label: 'Mujer',  image: '/women.jpg' },
-  { key: 'Niño',   label: 'Niño',   image: '/niño.jpg' },
-  { key: 'Niña',   label: 'Niña',   image: '/niña.jpg' },
+  { key: 'Hombre',            label: 'Hombre',            image: '/men.png.jpg' },
+  { key: 'Mujer',             label: 'Mujer',             image: '/women.jpg' },
+  { key: 'Niño',              label: 'Niño',              image: '/niño.jpg' },
+  { key: 'Niña',              label: 'Niña',              image: '/niña.jpg' },
+  { key: 'Novias',            label: 'Novias',            image: '/novia.jpg' },
+  { key: '15 Años',           label: '15 Años',           image: '/quinceaños.jpg' },
+  { key: 'Primera Comunión',  label: 'Primera Comunión',  image: '/primeracomunion.jpg' },
+  { key: 'Accesorios',        label: 'Accesorios',        image: '/accesorios.jpg' },
 ]
 
 interface Props {
@@ -21,7 +25,7 @@ interface Props {
 export default function CategoryFilter({ active, onChange }: Props) {
   return (
     <div
-      className="flex gap-2.5 overflow-x-auto pb-1"
+      className="flex gap-2.5 overflow-x-auto pb-1 md:justify-center"
       style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
     >
       {categories.map((cat) => {
@@ -36,12 +40,13 @@ export default function CategoryFilter({ active, onChange }: Props) {
               borderRadius: '999px',
               background: isActive
                 ? 'var(--accent-bg)'
-                : 'var(--glass-bg)',
-              backdropFilter: 'blur(12px)',
-              WebkitBackdropFilter: 'blur(12px)',
+                : '#ffffff',
               border: isActive
                 ? '1px solid var(--accent-border)'
-                : '1px solid var(--glass-border)',
+                : '1px solid rgba(0,0,0,0.05)',
+              boxShadow: isActive
+                ? '0 2px 10px rgba(0,0,0,0.06)'
+                : '0 3px 12px rgba(0,0,0,0.08)',
               transition: 'all 0.2s ease',
             }}
           >

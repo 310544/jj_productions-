@@ -8,8 +8,15 @@ import {
   IconScan, IconCurrencyDollar, IconDeviceFloppy,
 } from '@tabler/icons-react'
 
-const TIPOS = ['Traje', 'Camisa', 'Pantalon']
-const CATEGORIAS: Categoria[] = ['Hombre', 'Mujer', 'Niño', 'Niña']
+const TIPOS = [
+  'Traje', 'Smoking', 'Frac', 'Traje típico', 'Traje sastre', 'Traje coctel',
+  'Camisa', 'Pantalón', 'Saco', 'Chaleco', 'Corbata', 'Corbatín',
+  'Vestido', 'Zapatos', 'Sombrero', 'Muñeco decorativo', 'Cojín', 'Lazo de pétalo',
+]
+const CATEGORIAS: Categoria[] = [
+  'Hombre', 'Mujer', 'Niño', 'Niña', 'Novias',
+  '15 Años', 'Primera Comunión', 'Accesorios',
+]
 
 interface Props {
   inPopup?: boolean
@@ -70,11 +77,11 @@ export default function AgregarPrenda({ inPopup, onClose }: Props = {}) {
   }
 
   async function handleSave() {
-    if (!tipo || !categoria || !codigo.trim() || !descripcion.trim() || !precio.trim()) {
-      setError('Completa todos los campos')
+    if (!tipo || !categoria || !codigo.trim()) {
+      setError('Completa tipo, categoria y codigo')
       return
     }
-    if (isNaN(parseFloat(precio)) || parseFloat(precio) <= 0) {
+    if (precio.trim() && (isNaN(parseFloat(precio)) || parseFloat(precio) <= 0)) {
       setError('Ingresa un precio valido')
       return
     }
@@ -109,7 +116,7 @@ export default function AgregarPrenda({ inPopup, onClose }: Props = {}) {
       nombre: `${tipo} - ${descripcion.trim()}`,
       imagen_url,
       estado: 'disponible',
-      precio: parseFloat(precio),
+      precio: parseFloat(precio) || 0,
       categoria: categoria as Categoria,
     })
 
@@ -158,8 +165,9 @@ export default function AgregarPrenda({ inPopup, onClose }: Props = {}) {
         onClick={() => fileInputRef.current?.click()}
         className="border-2 border-dashed rounded-[16px] aspect-square flex flex-col items-center justify-center cursor-pointer transition-all"
         style={{
-          borderColor: preview ? 'var(--accent)' : 'rgba(0,0,0,0.12)',
-          background: 'var(--glass-bg)',
+          borderColor: preview ? 'var(--accent-border)' : 'var(--danger)',
+          background: 'transparent',
+          animation: preview ? 'none' : 'pulse-border 2s ease-in-out infinite',
         }}
       >
         {preview ? (
@@ -173,15 +181,26 @@ export default function AgregarPrenda({ inPopup, onClose }: Props = {}) {
             <div
               className="w-14 h-14 flex items-center justify-center rounded-xl mx-auto mb-3"
               style={{
-                background: 'var(--accent-bg)',
-                border: '1px solid var(--accent-border)',
+                background: 'transparent',
+                animation: 'pulse-icon 2s ease-in-out infinite',
               }}
             >
-              <IconCamera className="w-7 h-7" style={{ color: 'var(--accent)' }} aria-hidden="true" />
+              <IconCamera className="w-7 h-7" style={{ color: 'var(--danger)' }} aria-hidden="true" />
             </div>
-            <p className="text-sm font-medium text-text-secondary">Toca para agregar imagen</p>
+            <p className="text-sm font-semibold" style={{ color: 'var(--danger)' }}>Toca para agregar imagen</p>
           </div>
         )}
+
+        <style>{`
+          @keyframes pulse-border {
+            0%, 100% { border-color: var(--danger); }
+            50% { border-color: rgba(239,68,68,0.25); }
+          }
+          @keyframes pulse-icon {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.08); opacity: 0.65; }
+          }
+        `}</style>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
@@ -272,7 +291,7 @@ export default function AgregarPrenda({ inPopup, onClose }: Props = {}) {
                     className="w-full text-left px-4 py-2.5 text-sm transition-all hover:brightness-150"
                     style={{
                       color: tipo === t ? 'var(--accent)' : 'var(--text-primary)',
-                      background: tipo === t ? 'rgba(212,160,23,0.08)' : 'transparent',
+                      background: tipo === t ? 'rgba(201,163,90,0.10)' : 'transparent',
                     }}
                   >
                     {t}
@@ -298,7 +317,7 @@ export default function AgregarPrenda({ inPopup, onClose }: Props = {}) {
                 color: categoria ? 'var(--text-primary)' : 'var(--text-tertiary)',
               }}
             >
-              {categoria || 'Hombre / Mujer / Niño / Niña'}
+              {categoria || 'Seleccionar categoria'}
               <IconChevronDown
                 className="w-5 h-5 shrink-0"
                 style={{ color: 'var(--text-secondary)' }}
@@ -325,7 +344,7 @@ export default function AgregarPrenda({ inPopup, onClose }: Props = {}) {
                     className="w-full text-left px-4 py-2.5 text-sm transition-all hover:brightness-150"
                     style={{
                       color: categoria === c ? 'var(--accent)' : 'var(--text-primary)',
-                      background: categoria === c ? 'rgba(212,160,23,0.08)' : 'transparent',
+                      background: categoria === c ? 'rgba(201,163,90,0.10)' : 'transparent',
                     }}
                   >
                     {c}
@@ -359,7 +378,7 @@ export default function AgregarPrenda({ inPopup, onClose }: Props = {}) {
 
         <div>
           <label className="block text-sm font-medium text-text-secondary mb-1.5">
-            Color / Descripcion
+            Color / Descripcion (opcional)
           </label>
           <input
             type="text"
@@ -373,7 +392,7 @@ export default function AgregarPrenda({ inPopup, onClose }: Props = {}) {
 
         <div>
           <label className="block text-sm font-medium text-text-secondary mb-1.5">
-            Precio de alquiler
+            Precio de alquiler (opcional)
           </label>
           <div className="relative">
             <IconCurrencyDollar

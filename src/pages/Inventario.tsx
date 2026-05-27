@@ -1,29 +1,19 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import GarmentCard from '../components/GarmentCard'
 import Hero from '../components/Hero'
 import CategoryFilter from '../components/CategoryFilter'
 import GarmentModal from '../components/GarmentModal'
 import { usePrendasStore } from '../store/usePrendasStore'
 import type { Categoria, Prenda } from '../types'
+import { IconFileInvoice, IconPlus, IconHistory } from '@tabler/icons-react'
 
 export default function Inventario() {
+  const navigate = useNavigate()
   const { prendas, loading, error, fetchPrendas, removePrenda } = usePrendasStore()
   const [search, setSearch] = useState('')
   const [categoria, setCategoria] = useState<Categoria | null>(null)
   const [selectedPrenda, setSelectedPrenda] = useState<Prenda | null>(null)
-  const [favorites, setFavorites] = useState<Set<number>>(new Set())
-
-  function toggleFavorite(id: number) {
-    setFavorites((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) {
-        next.delete(id)
-      } else {
-        next.add(id)
-      }
-      return next
-    })
-  }
 
   useEffect(() => {
     fetchPrendas()
@@ -39,15 +29,25 @@ export default function Inventario() {
 
   return (
     <div className="space-y-4">
-      <Hero
-        searchValue={search}
-        onSearchChange={setSearch}
-      />
+      <div
+        className="pb-6 -mx-4 md:-mx-8 px-4 md:px-8 -mt-5 md:-mt-8"
+        style={{
+          background: 'linear-gradient(to right, #D4AF37, #B8860B)',
+        }}
+      >
+        <Hero
+          searchValue={search}
+          onSearchChange={setSearch}
+        />
+      </div>
+      <div className="border-b" style={{ borderColor: 'rgba(0,0,0,0.10)' }} />
 
-      <p className="text-sm font-bold text-text-primary">Category</p>
-      <CategoryFilter active={categoria} onChange={setCategoria} />
+      <div className="max-w-6xl mx-auto w-full space-y-3">
+        <p className="text-sm font-bold text-text-primary">Category</p>
+        <CategoryFilter active={categoria} onChange={setCategoria} />
 
-      <p className="text-sm font-bold text-text-primary">Popular</p>
+        <p className="text-sm font-bold text-text-primary mt-2">Popular</p>
+      </div>
 
       {error && (
         <p className="text-center py-12" style={{ color: 'var(--danger)' }}>
@@ -64,14 +64,40 @@ export default function Inventario() {
         </div>
       )}
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      {/* Linea divisoria vertical */}
+      <div className="hidden md:block fixed left-64 z-0" style={{ top: '210px', bottom: '0', borderRight: '1px solid rgba(0,0,0,0.12)' }} />
+
+      {/* Sidebar menu - solo web, fijo a la izquierda */}
+      <div className="hidden md:flex md:flex-col md:gap-0.5 fixed left-0 top-[210px] bottom-0 z-10 py-4" style={{ width: '256px', background: '#F6F6F7' }}>
+        <button
+          onClick={() => navigate('/alquiler')}
+          className="flex items-center gap-3 mx-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all hover:bg-black/5 text-text-primary"
+        >
+          <IconFileInvoice className="w-5 h-5" style={{ color: 'var(--text-secondary)' }} />
+          Factura
+        </button>
+        <button
+          onClick={() => navigate('/agregar')}
+          className="flex items-center gap-3 mx-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all hover:bg-black/5 text-text-primary"
+        >
+          <IconPlus className="w-5 h-5" style={{ color: 'var(--text-secondary)' }} />
+          Agregar
+        </button>
+        <button
+          onClick={() => navigate('/historial')}
+          className="flex items-center gap-3 mx-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all hover:bg-black/5 text-text-primary"
+        >
+          <IconHistory className="w-5 h-5" style={{ color: 'var(--text-secondary)' }} />
+          Historial
+        </button>
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 max-w-6xl mx-auto w-full">
         {filtered.map((prenda) => (
           <GarmentCard
             key={prenda.id}
             prenda={prenda}
             onSelect={setSelectedPrenda}
-            isFavorite={favorites.has(prenda.id)}
-            onToggleFavorite={toggleFavorite}
           />
         ))}
       </div>

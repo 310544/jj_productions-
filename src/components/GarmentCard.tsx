@@ -1,16 +1,14 @@
 import type { Prenda } from '../types'
-import { IconHeart, IconHeartFilled } from '@tabler/icons-react'
 import { formatDateShort } from '../lib/formatDate'
 
 interface Props {
   prenda: Prenda
   onSelect: (prenda: Prenda) => void
-  isFavorite: boolean
-  onToggleFavorite: (id: number) => void
 }
 
-export default function GarmentCard({ prenda, onSelect, isFavorite, onToggleFavorite }: Props) {
+export default function GarmentCard({ prenda, onSelect }: Props) {
   const ocupado = prenda.estado === 'ocupado'
+  const vendido = prenda.estado === 'vendido'
   const fechas = prenda.fechas_ocupado || []
 
   return (
@@ -21,13 +19,14 @@ export default function GarmentCard({ prenda, onSelect, isFavorite, onToggleFavo
       tabIndex={0}
       className="rounded-[16px] overflow-hidden flex flex-col p-2 text-left w-full cursor-pointer"
       style={{
-        background: 'var(--glass-bg)',
-        border: '1px solid var(--glass-border)',
+        background: '#ffffff',
+        border: '1px solid rgba(0,0,0,0.05)',
+        boxShadow: '0 2px 12px rgba(0,0,0,0.04), 0 1px 3px rgba(0,0,0,0.03)',
       }}
     >
       {/* Recuadro interior con la foto */}
       <div
-        className="relative w-full aspect-square overflow-hidden rounded-[12px]"
+        className="relative w-full aspect-square overflow-hidden rounded-[18px]"
         style={{ background: '#f1f1f3' }}
       >
         {prenda.imagen_url ? (
@@ -44,10 +43,9 @@ export default function GarmentCard({ prenda, onSelect, isFavorite, onToggleFavo
         )}
 
         {ocupado && (
-          <div className="absolute inset-0 rounded-[12px] overflow-hidden flex flex-col items-center justify-center gap-1.5" style={{ background: 'rgba(0,0,0,0.55)' }}>
-            {/* Todas las fechas de alquiler */}
+          <div className="absolute inset-0 rounded-[18px] overflow-hidden flex flex-col items-center justify-center gap-1.5" style={{ background: 'rgba(0,0,0,0.55)' }}>
             {fechas.map((f, i) => (
-              <p key={i} className="text-[10px] font-semibold px-2 py-0.5 rounded-full relative z-10" style={{
+              <p key={i} className="text-[11px] font-semibold px-2 py-0.5 rounded-full relative z-10" style={{
                 background: 'rgba(255,60,60,0.2)',
                 backdropFilter: 'blur(8px)',
                 WebkitBackdropFilter: 'blur(8px)',
@@ -56,7 +54,6 @@ export default function GarmentCard({ prenda, onSelect, isFavorite, onToggleFavo
                 {formatDateShort(f.fecha_inicio)} - {formatDateShort(f.fecha_fin)}
               </p>
             ))}
-            {/* Línea diagonal \ de esquina superior-izq a inferior-der */}
             <span
               className="absolute h-[4px] w-[141%] rounded-sm"
               style={{
@@ -66,7 +63,6 @@ export default function GarmentCard({ prenda, onSelect, isFavorite, onToggleFavo
                 transform: 'translate(-50%, -50%) rotate(45deg)',
               }}
             />
-            {/* Línea diagonal / de esquina superior-der a inferior-izq */}
             <span
               className="absolute h-[4px] w-[141%] rounded-sm"
               style={{
@@ -79,55 +75,54 @@ export default function GarmentCard({ prenda, onSelect, isFavorite, onToggleFavo
           </div>
         )}
 
-        {/* Badge estado — gris glass */}
-        <span
-          className="absolute top-2 left-2 px-2.5 py-0.5 rounded-full text-[10px] font-semibold"
-          style={{
-            background: 'rgba(0,0,0,0.04)',
-            backdropFilter: 'blur(8px)',
-            WebkitBackdropFilter: 'blur(8px)',
-            border: '1px solid rgba(0,0,0,0.08)',
-            color: 'rgba(0,0,0,0.55)',
-          }}
-        >
-          {prenda.estado}
-        </span>
+        {vendido && (
+          <div className="absolute inset-0 rounded-[18px] flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.4)' }}>
+            <span className="text-white text-sm font-bold tracking-widest uppercase opacity-80">Vendido</span>
+          </div>
+        )}
 
-        {/* Boton favorito */}
-        <button
-          onClick={(e) => {
-            e.stopPropagation()
-            onToggleFavorite(prenda.id)
-          }}
-          className="absolute top-2 right-2 w-8 h-8 flex items-center justify-center rounded-full transition-all hover:scale-110"
+        {/* Indicador de estado */}
+        <div
+          className="absolute top-2 left-2 w-6 h-6 rounded-full flex items-center justify-center"
           style={{
-            background: 'rgba(0,0,0,0.04)',
-            backdropFilter: 'blur(8px)',
-            WebkitBackdropFilter: 'blur(8px)',
+            background: 'rgba(0,0,0,0.15)',
+            backdropFilter: 'blur(4px)',
             border: '1px solid rgba(0,0,0,0.08)',
           }}
-          aria-label={isFavorite ? 'Quitar de favoritos' : 'Agregar a favoritos'}
         >
-          {isFavorite ? (
-            <IconHeartFilled className="w-3.5 h-3.5" style={{ color: '#ef4444' }} />
-          ) : (
-            <IconHeart className="w-3.5 h-3.5" style={{ color: 'rgba(0,0,0,0.45)' }} />
-          )}
-        </button>
+          <div
+            className="w-1.5 h-1.5 rounded-full"
+            style={{
+              background: vendido ? 'var(--text-tertiary)' : ocupado ? 'var(--danger)' : 'var(--success)',
+              animation: vendido ? 'none' : 'pulse-dot 2s ease-in-out infinite',
+            }}
+          />
+        </div>
+        <style>{`
+          @keyframes pulse-dot {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.3); }
+          }
+        `}</style>
+
+        {/* Etiqueta codigo */}
+        <span
+          className="absolute top-2.5 right-2.5 px-2 py-0.5 rounded-full text-[11px] font-bold tracking-wide"
+          style={{
+            background: 'rgba(255,255,255,0.9)',
+            color: '#1a1a1e',
+            border: '1px solid rgba(0,0,0,0.06)',
+            boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+          }}
+        >
+          {prenda.codigo}
+        </span>
       </div>
 
       {/* Info abajo */}
       <div className="px-1 pt-2 pb-1 flex flex-col gap-0.5">
-        {/* Código */}
-        <p
-          className="text-sm font-extrabold tracking-widest uppercase"
-          style={{ color: ocupado ? 'var(--text-secondary)' : 'var(--accent)' }}
-        >
-          {prenda.codigo}
-        </p>
-
         {/* Nombre */}
-        <p className="text-xs font-medium truncate text-text-secondary">
+        <p className="text-sm font-medium truncate text-text-primary">
           {prenda.nombre}
         </p>
       </div>

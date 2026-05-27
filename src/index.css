@@ -3,17 +3,17 @@
 
 :root {
   --glass-bg: #ffffff;
-  --glass-border: rgba(0, 0, 0, 0.06);
+  --glass-border: rgba(0, 0, 0, 0.05);
   --glass-blur: blur(12px);
   --glass-strong: #ffffff;
 
   --field-bg: #ffffff;
-  --field-border: rgba(0, 0, 0, 0.08);
+  --field-border: rgba(0, 0, 0, 0.06);
 
-  --accent: #C9A84C;
-  --accent-glow: rgba(184, 151, 30, 0.85);
-  --accent-bg: rgba(184, 151, 30, 0.10);
-  --accent-border: rgba(184, 151, 30, 0.30);
+  --accent: #C9A35A;
+  --accent-glow: linear-gradient(135deg, #D4AF37 0%, #D7B545 35%, #DEC180 55%, #D7B545 75%, #C9A35A 100%);
+  --accent-bg: rgba(201, 163, 90, 0.10);
+  --accent-border: rgba(201, 163, 90, 0.30);
 
   --text-primary: #1a1a1e;
   --text-secondary: rgba(0, 0, 0, 0.45);
@@ -29,7 +29,7 @@
 
   --overlay: rgba(0, 0, 0, 0.40);
 
-  --bg-gradient: #e8edf2;
+  --bg-gradient: #ffffff;
 
   --radius-card: 16px;
   --radius-btn: 12px;
@@ -46,10 +46,10 @@
   --field-bg: #ffffff;
   --field-border: rgba(0, 0, 0, 0.07);
 
-  --accent: #C9A84C;
-  --accent-glow: rgba(184, 151, 30, 0.85);
-  --accent-bg: rgba(184, 151, 30, 0.10);
-  --accent-border: rgba(184, 151, 30, 0.30);
+  --accent: #C9A35A;
+  --accent-glow: linear-gradient(135deg, #D4AF37 0%, #D7B545 35%, #DEC180 55%, #D7B545 75%, #C9A35A 100%);
+  --accent-bg: rgba(201, 163, 90, 0.10);
+  --accent-border: rgba(201, 163, 90, 0.30);
 
   --text-primary: #1a1a1e;
   --text-secondary: rgba(0, 0, 0, 0.45);
@@ -58,7 +58,7 @@
   --danger-bg: rgba(239, 68, 68, 0.08);
   --danger-border: rgba(239, 68, 68, 0.20);
 
-  --bg-gradient: #e0e6ed;
+  --bg-gradient: #ffffff;
 }
 
 .glass-light .app-wrapper::before,
@@ -74,10 +74,10 @@
   --field-bg: rgba(255, 255, 255, 0.07);
   --field-border: rgba(255, 255, 255, 0.12);
 
-  --accent: #C9A84C;
-  --accent-glow: rgba(201, 168, 76, 0.85);
-  --accent-bg: rgba(201, 168, 76, 0.12);
-  --accent-border: rgba(201, 168, 76, 0.3);
+  --accent: #C9A35A;
+  --accent-glow: linear-gradient(135deg, #D4AF37 0%, #D7B545 35%, #DEC180 55%, #D7B545 75%, #C9A35A 100%);
+  --accent-bg: rgba(201, 163, 90, 0.12);
+  --accent-border: rgba(201, 163, 90, 0.3);
 
   --text-primary: #ffffff;
   --text-secondary: rgba(255, 255, 255, 0.45);
@@ -153,7 +153,7 @@
 .hero-float-circle {
   position: absolute;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(212, 160, 23, 0.35) 0%, rgba(212, 160, 23, 0.05) 70%);
+  background: radial-gradient(circle, rgba(201, 163, 90, 0.30) 0%, rgba(201, 163, 90, 0.05) 70%);
   pointer-events: none;
   animation: floatCircle 4s ease-in-out infinite;
 }
@@ -169,7 +169,7 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
-  background: #dce3ea;
+  background: #ffffff;
 }
 
 .glass-dark body {
@@ -210,7 +210,7 @@ body {
     transform: translateX(-50%);
     width: 300px;
     height: 150px;
-    background: radial-gradient(ellipse, rgba(201, 168, 76, 0.15) 0%, transparent 70%);
+    background: radial-gradient(ellipse, rgba(201, 163, 90, 0.15) 0%, transparent 70%);
     pointer-events: none;
     z-index: 10;
   }
@@ -224,7 +224,7 @@ body {
   transform: translateX(-50%);
   width: 500px;
   height: 200px;
-  background: radial-gradient(ellipse at center top, rgba(212, 160, 23, 0.18) 0%, transparent 70%);
+  background: radial-gradient(ellipse at center top, rgba(201, 163, 90, 0.18) 0%, transparent 70%);
   pointer-events: none;
   z-index: 0;
 }

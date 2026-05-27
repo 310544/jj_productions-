@@ -5,10 +5,13 @@ import { formatDateShort } from '../lib/formatDate'
 import type { Prenda, Categoria } from '../types'
 import {
   IconX, IconUser, IconPhone, IconCalendar,
-  IconTrash, IconArrowBack, IconEdit, IconCheck, IconUpload,
+  IconTrash, IconArrowBack, IconEdit, IconCheck, IconUpload, IconHanger,
 } from '@tabler/icons-react'
 
-const CATEGORIAS: Categoria[] = ['Hombre', 'Mujer', 'Niño', 'Niña']
+const CATEGORIAS: Categoria[] = [
+  'Hombre', 'Mujer', 'Niño', 'Niña', 'Novias',
+  '15 Años', 'Primera Comunión', 'Accesorios',
+]
 
 interface RentalDetail {
   rental_id: number
@@ -127,6 +130,7 @@ export default function GarmentModal({ prenda: initialPrenda, onClose, onDelete 
       .from('rental_items')
       .select('rental_id, rentals!inner(id, fecha_inicio, fecha_fin, customer_id, estado)')
       .eq('garment_id', garmentId)
+      .eq('rentals.estado', 'activo')
       .order('fecha_inicio', { referencedTable: 'rentals', ascending: false })
 
     if (!items || items.length === 0) {
@@ -401,7 +405,15 @@ export default function GarmentModal({ prenda: initialPrenda, onClose, onDelete 
         {/* Sin alquileres */}
         {!editing && !loadingRentals && rentals.length === 0 && (
           <div className="rounded-[16px] p-5 text-center" style={cardStyle}>
-            <p className="text-4xl mb-2 opacity-30">✅</p>
+            <div
+              className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3"
+              style={{
+                background: 'var(--accent-bg)',
+                border: '1px solid var(--accent-border)',
+              }}
+            >
+              <IconHanger className="w-6 h-6" style={{ color: 'var(--accent)' }} />
+            </div>
             <p className="text-text-secondary font-medium">Sin alquileres registrados</p>
             <p className="text-text-tertiary text-sm mt-1">Lista para alquilar</p>
           </div>
@@ -491,7 +503,7 @@ export default function GarmentModal({ prenda: initialPrenda, onClose, onDelete 
               onClick={handleSave}
               disabled={saving}
               className="w-full py-3 font-semibold rounded-[14px] transition-all hover:brightness-110 disabled:opacity-50 flex items-center justify-center gap-2 text-white"
-              style={{ background: 'var(--accent)' }}
+              style={{ background: 'var(--accent-glow)' }}
             >
               <IconCheck className="w-5 h-5" aria-hidden="true" />
               {saving ? 'Guardando...' : 'Guardar cambios'}
@@ -514,7 +526,7 @@ export default function GarmentModal({ prenda: initialPrenda, onClose, onDelete 
           <button
             onClick={() => setEditing(true)}
             className="w-full py-3 font-semibold rounded-[14px] transition-all hover:brightness-110 flex items-center justify-center gap-2 text-white"
-            style={{ background: 'var(--accent)' }}
+            style={{ background: 'var(--accent-glow)' }}
           >
             <IconEdit className="w-5 h-5" aria-hidden="true" />
             Editar prenda
