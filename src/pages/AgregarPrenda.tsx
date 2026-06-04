@@ -276,7 +276,7 @@ export default function AgregarPrenda({ inPopup, onClose }: Props = {}) {
                 onClick={(e) => e.stopPropagation()}
                 className="absolute top-full mt-1 left-0 right-0 rounded-[12px] py-1 z-20"
                 style={{
-                  background: '#ffffff',
+                  background: 'var(--surface)',
                   backdropFilter: 'blur(20px)',
                   WebkitBackdropFilter: 'blur(20px)',
                   border: '1px solid rgba(0,0,0,0.08)',
@@ -329,7 +329,7 @@ export default function AgregarPrenda({ inPopup, onClose }: Props = {}) {
                 onClick={(e) => e.stopPropagation()}
                 className="absolute top-full mt-1 left-0 right-0 rounded-[12px] py-1 z-20"
                 style={{
-                  background: '#ffffff',
+                  background: 'var(--surface)',
                   backdropFilter: 'blur(20px)',
                   WebkitBackdropFilter: 'blur(20px)',
                   border: '1px solid rgba(0,0,0,0.08)',
@@ -401,9 +401,10 @@ export default function AgregarPrenda({ inPopup, onClose }: Props = {}) {
               aria-hidden="true"
             />
             <input
-              type="number"
-              value={precio}
-              onChange={(e) => setPrecio(e.target.value)}
+              type="text"
+              inputMode="numeric"
+              value={precio ? Number(precio).toLocaleString('es-CO') : ''}
+              onChange={(e) => setPrecio(e.target.value.replace(/\D/g, ''))}
               placeholder="50.000"
               className="w-full rounded-[12px] pl-11 pr-4 py-3 text-base text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-accent/40"
               style={inputStyle}
@@ -422,7 +423,7 @@ export default function AgregarPrenda({ inPopup, onClose }: Props = {}) {
         onClick={handleSave}
         disabled={saving}
         className="w-full py-3.5 text-white font-semibold rounded-[14px] transition-all hover:brightness-110 disabled:opacity-50 flex items-center justify-center gap-2"
-        style={{ background: 'var(--accent-glow)' }}
+        style={{ background: 'var(--btn-primary)' }}
       >
         <IconDeviceFloppy className="w-5 h-5" aria-hidden="true" />
         {saving ? 'Guardando...' : 'Guardar prenda'}

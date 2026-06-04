@@ -5,6 +5,7 @@ import AgregarPrenda from './pages/AgregarPrenda'
 import DetallePrenda from './pages/DetallePrenda'
 import Alquiler from './pages/Alquiler'
 import Historial from './pages/Historial'
+import Contabilidad from './pages/Contabilidad'
 
 export default function App() {
   return (
@@ -16,6 +17,7 @@ export default function App() {
           <Route path="/prenda/:codigo" element={<DetallePrenda />} />
           <Route path="/alquiler" element={<Alquiler />} />
           <Route path="/historial" element={<Historial />} />
+          <Route path="/contabilidad" element={<Contabilidad />} />
         </Routes>
       </Layout>
     </BrowserRouter>

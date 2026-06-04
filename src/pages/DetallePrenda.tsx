@@ -20,10 +20,10 @@ export default function DetallePrenda() {
   const { codigo } = useParams<{ codigo: string }>()
   const navigate = useNavigate()
   const [prenda, setPrenda] = useState<Prenda | null>(null)
-  const [rentalInfo, setRentalInfo] = useState<RentalInfo | null>(null)
+  const [rentals, setRentals] = useState<RentalInfo[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [updating, setUpdating] = useState(false)
+  const [updatingId, setUpdatingId] = useState<number | null>(null)
   const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
@@ -48,61 +48,65 @@ export default function DetallePrenda() {
 
     setPrenda(prendaData)
 
-    if (prendaData.estado === 'ocupado') {
-      const { data: items, error: itemsError } = await supabase
-        .from('rental_items')
-        .select('rental_id')
-        .eq('garment_id', prendaData.id)
+    // Traer TODOS los alquileres activos de esta prenda (cada uno con sus fechas)
+    const { data: items } = await supabase
+      .from('rental_items')
+      .select('rental_id')
+      .eq('garment_id', prendaData.id)
 
-      if (!itemsError && items && items.length > 0) {
-        const rentalIds = items.map((i) => i.rental_id)
+    if (items && items.length > 0) {
+      const rentalIds = items.map((i) => i.rental_id)
 
-        const { data: rentals, error: rentalError } = await supabase
-          .from('rentals')
-          .select('id, fecha_inicio, fecha_fin, customer_id')
-          .in('id', rentalIds)
-          .eq('estado', 'activo')
-          .limit(1)
-          .single()
+      const { data: rentalsData } = await supabase
+        .from('rentals')
+        .select('id, fecha_inicio, fecha_fin, customers(nombre, telefono)')
+        .in('id', rentalIds)
+        .eq('estado', 'activo')
+        .order('fecha_inicio', { ascending: true })
 
-        if (!rentalError && rentals) {
-          const { data: customer } = await supabase
-            .from('customers')
-            .select('nombre, telefono')
-            .eq('id', rentals.customer_id)
-            .single()
-
-          setRentalInfo({
-            customer_name: customer?.nombre || '—',
-            customer_phone: customer?.telefono || '—',
-            fecha_inicio: rentals.fecha_inicio,
-            fecha_fin: rentals.fecha_fin,
-            rental_id: rentals.id,
+      if (rentalsData) {
+        setRentals(
+          rentalsData.map((r: any) => {
+            const cust = Array.isArray(r.customers) ? r.customers[0] : r.customers
+            return {
+              rental_id: r.id,
+              fecha_inicio: r.fecha_inicio,
+              fecha_fin: r.fecha_fin,
+              customer_name: cust?.nombre || '—',
+              customer_phone: cust?.telefono || '—',
+            }
           })
-        }
+        )
       }
+    } else {
+      setRentals([])
     }
 
     setLoading(false)
   }
 
-  async function handleMarcarDisponible() {
-    if (!prenda || !rentalInfo) return
-    setUpdating(true)
-
-    await supabase
-      .from('garments')
-      .update({ estado: 'disponible' })
-      .eq('id', prenda.id)
+  async function handleFinalizarRental(rentalId: number) {
+    if (!prenda) return
+    setUpdatingId(rentalId)
 
     await supabase
       .from('rentals')
       .update({ estado: 'finalizado' })
-      .eq('id', rentalInfo.rental_id)
+      .eq('id', rentalId)
 
-    setPrenda({ ...prenda, estado: 'disponible' })
-    setRentalInfo(null)
-    setUpdating(false)
+    const remaining = rentals.filter((r) => r.rental_id !== rentalId)
+
+    // Si ya no quedan alquileres activos, la prenda vuelve a estar disponible
+    if (remaining.length === 0 && prenda.estado === 'ocupado') {
+      await supabase
+        .from('garments')
+        .update({ estado: 'disponible' })
+        .eq('id', prenda.id)
+      setPrenda({ ...prenda, estado: 'disponible' })
+    }
+
+    setRentals(remaining)
+    setUpdatingId(null)
   }
 
   async function handleDelete() {
@@ -178,8 +182,7 @@ export default function DetallePrenda() {
     )
   }
 
-  const fechaVencida =
-    rentalInfo && new Date(rentalInfo.fecha_fin) < new Date()
+  const esVencida = (fechaFin: string) => new Date(fechaFin) < new Date()
 
   return (
     <div className="space-y-5">
@@ -235,12 +238,12 @@ export default function DetallePrenda() {
         </h2>
         {prenda.precio > 0 && (
           <p className="text-sm font-medium mt-1" style={{ color: 'var(--accent)' }}>
-            ${prenda.precio.toLocaleString('es-CO', { style: 'currency', currency: 'COP' })} / alquiler
+            {prenda.precio.toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 })} / alquiler
           </p>
         )}
       </div>
 
-      {prenda.estado === 'disponible' && (
+      {rentals.length === 0 && prenda.estado === 'disponible' && (
         <div className="rounded-[16px] p-5 text-center" style={cardStyle}>
           <p className="text-4xl mb-2 opacity-30">✅</p>
           <p className="text-text-secondary font-medium">Prenda disponible</p>
@@ -248,62 +251,66 @@ export default function DetallePrenda() {
         </div>
       )}
 
-      {rentalInfo && (
-        <div className="rounded-[16px] p-5 space-y-4" style={cardStyle}>
-          <h3 className="font-semibold text-text-primary">Alquiler activo</h3>
+      {rentals.length > 0 && (
+        <div className="space-y-3">
+          <h3 className="font-semibold text-text-primary flex items-center gap-2">
+            <IconCalendar className="w-4 h-4" style={{ color: 'var(--accent)' }} aria-hidden="true" />
+            Alquileres ({rentals.length})
+          </h3>
 
-          <div className="space-y-3">
-            <div className="flex items-center gap-3">
-              <IconUser className="w-5 h-5 text-text-secondary shrink-0" aria-hidden="true" />
-              <p className="text-sm font-medium text-text-primary">
-                {rentalInfo.customer_name}
-              </p>
-            </div>
+          {rentals.map((r) => {
+            const vencida = esVencida(r.fecha_fin)
+            return (
+              <div key={r.rental_id} className="rounded-[16px] p-5 space-y-4" style={cardStyle}>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <IconUser className="w-5 h-5 text-text-secondary shrink-0" aria-hidden="true" />
+                    <p className="text-sm font-medium text-text-primary">{r.customer_name}</p>
+                  </div>
 
-            <div className="flex items-center gap-3">
-              <IconPhone className="w-5 h-5 text-text-secondary shrink-0" aria-hidden="true" />
-              <p className="text-sm text-text-primary">
-                {rentalInfo.customer_phone}
-              </p>
-            </div>
+                  <div className="flex items-center gap-3">
+                    <IconPhone className="w-5 h-5 text-text-secondary shrink-0" aria-hidden="true" />
+                    <p className="text-sm text-text-primary">{r.customer_phone}</p>
+                  </div>
 
-            <div className="flex items-center gap-3">
-              <IconCalendar className="w-5 h-5 text-text-secondary shrink-0" aria-hidden="true" />
-              <div className="flex gap-2 text-sm">
-                <span className="text-text-primary">
-                  {formatDate(rentalInfo.fecha_inicio)}
-                </span>
-                <span className="text-text-tertiary">→</span>
-                <span
-                  className="font-medium"
-                  style={{ color: fechaVencida ? 'var(--danger)' : 'var(--text-primary)' }}
+                  <div className="flex items-center gap-3">
+                    <IconCalendar className="w-5 h-5 text-text-secondary shrink-0" aria-hidden="true" />
+                    <div className="flex gap-2 text-sm">
+                      <span className="text-text-primary">{formatDate(r.fecha_inicio)}</span>
+                      <span className="text-text-tertiary">→</span>
+                      <span
+                        className="font-medium"
+                        style={{ color: vencida ? 'var(--danger)' : 'var(--text-primary)' }}
+                      >
+                        {formatDate(r.fecha_fin)}
+                      </span>
+                    </div>
+                  </div>
+
+                  {vencida && (
+                    <div className="flex items-center gap-2 text-sm" style={{ color: 'var(--danger)' }}>
+                      <IconAlertTriangle className="w-4 h-4" aria-hidden="true" />
+                      <span className="font-medium">Fecha de devolucion vencida</span>
+                    </div>
+                  )}
+                </div>
+
+                <button
+                  onClick={() => handleFinalizarRental(r.rental_id)}
+                  disabled={updatingId === r.rental_id}
+                  className="w-full py-3 font-semibold rounded-[14px] transition-all hover:brightness-125 disabled:opacity-50 flex items-center justify-center gap-2"
+                  style={{
+                    border: '1px solid var(--success-border)',
+                    color: 'var(--success)',
+                    background: 'var(--success-bg)',
+                  }}
                 >
-                  {formatDate(rentalInfo.fecha_fin)}
-                </span>
+                  <IconCheck className="w-5 h-5" aria-hidden="true" />
+                  {updatingId === r.rental_id ? 'Actualizando...' : 'Marcar como devuelto'}
+                </button>
               </div>
-            </div>
-
-            {fechaVencida && (
-              <div className="flex items-center gap-2 text-sm" style={{ color: 'var(--danger)' }}>
-                <IconAlertTriangle className="w-4 h-4" aria-hidden="true" />
-                <span className="font-medium">Fecha de devolucion vencida</span>
-              </div>
-            )}
-          </div>
-
-          <button
-            onClick={handleMarcarDisponible}
-            disabled={updating}
-            className="w-full py-3 font-semibold rounded-[14px] transition-all hover:brightness-125 disabled:opacity-50 flex items-center justify-center gap-2"
-            style={{
-              border: '1px solid var(--success-border)',
-              color: 'var(--success)',
-              background: 'var(--success-bg)',
-            }}
-          >
-            <IconCheck className="w-5 h-5" aria-hidden="true" />
-            {updating ? 'Actualizando...' : 'Marcar como disponible'}
-          </button>
+            )
+          })}
         </div>
       )}
 

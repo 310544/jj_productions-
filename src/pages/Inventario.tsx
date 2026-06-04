@@ -1,15 +1,12 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import GarmentCard from '../components/GarmentCard'
 import Hero from '../components/Hero'
 import CategoryFilter from '../components/CategoryFilter'
 import GarmentModal from '../components/GarmentModal'
 import { usePrendasStore } from '../store/usePrendasStore'
 import type { Categoria, Prenda } from '../types'
-import { IconFileInvoice, IconPlus, IconHistory } from '@tabler/icons-react'
 
 export default function Inventario() {
-  const navigate = useNavigate()
   const { prendas, loading, error, fetchPrendas, removePrenda } = usePrendasStore()
   const [search, setSearch] = useState('')
   const [categoria, setCategoria] = useState<Categoria | null>(null)
@@ -28,31 +25,56 @@ export default function Inventario() {
   })
 
   return (
-    <div className="space-y-4">
-      <div
-        className="pb-6 -mx-4 md:-mx-8 px-4 md:px-8 -mt-5 md:-mt-8"
-        style={{
-          background: 'linear-gradient(to right, #D4AF37, #B8860B)',
-        }}
-      >
+    <div className="space-y-5 px-4 md:px-8">
+      {/* Desktop page header */}
+      <div className="hidden md:flex items-center justify-between pt-7 pb-1">
+        <div>
+          <h1 className="text-2xl font-bold text-text-primary tracking-tight">Inventario</h1>
+          <p className="text-sm text-text-secondary mt-0.5">
+            {filtered.length} prenda{filtered.length !== 1 ? 's' : ''}
+            {categoria ? ` en ${categoria}` : ' en total'}
+          </p>
+        </div>
+        <div />
+      </div>
+
+      <div>
         <Hero
           searchValue={search}
           onSearchChange={setSearch}
         />
       </div>
-      <div className="border-b" style={{ borderColor: 'rgba(0,0,0,0.10)' }} />
 
-      <div className="max-w-6xl mx-auto w-full space-y-3">
-        <p className="text-sm font-bold text-text-primary">Category</p>
+      <div className="max-w-[1500px] mx-auto w-full space-y-3">
+        <p className="text-xs font-semibold text-text-tertiary uppercase tracking-wider px-0.5">
+          Categorías
+        </p>
         <CategoryFilter active={categoria} onChange={setCategoria} />
-
-        <p className="text-sm font-bold text-text-primary mt-2">Popular</p>
       </div>
 
       {error && (
         <p className="text-center py-12" style={{ color: 'var(--danger)' }}>
           Error: {error}
         </p>
+      )}
+
+      {loading && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-4 max-w-[1500px] mx-auto w-full pb-2">
+          {Array.from({ length: 10 }).map((_, i) => (
+            <div
+              key={i}
+              className="rounded-[20px] overflow-hidden animate-pulse"
+              style={{ background: '#f5f5f5', border: '1px solid rgba(0,0,0,0.04)' }}
+            >
+              <div className="aspect-[3/4]" style={{ background: '#e8e8e8' }} />
+              <div className="p-3.5 space-y-2">
+                <div className="h-2.5 rounded-full" style={{ background: '#e2e2e2', width: '40%' }} />
+                <div className="h-3 rounded-full" style={{ background: '#ddd', width: '70%' }} />
+                <div className="h-3 rounded-full" style={{ background: '#ddd', width: '45%' }} />
+              </div>
+            </div>
+          ))}
+        </div>
       )}
 
       {!loading && !error && filtered.length === 0 && (
@@ -64,43 +86,17 @@ export default function Inventario() {
         </div>
       )}
 
-      {/* Linea divisoria vertical */}
-      <div className="hidden md:block fixed left-64 z-0" style={{ top: '210px', bottom: '0', borderRight: '1px solid rgba(0,0,0,0.12)' }} />
-
-      {/* Sidebar menu - solo web, fijo a la izquierda */}
-      <div className="hidden md:flex md:flex-col md:gap-0.5 fixed left-0 top-[210px] bottom-0 z-10 py-4" style={{ width: '256px', background: '#F6F6F7' }}>
-        <button
-          onClick={() => navigate('/alquiler')}
-          className="flex items-center gap-3 mx-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all hover:bg-black/5 text-text-primary"
-        >
-          <IconFileInvoice className="w-5 h-5" style={{ color: 'var(--text-secondary)' }} />
-          Factura
-        </button>
-        <button
-          onClick={() => navigate('/agregar')}
-          className="flex items-center gap-3 mx-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all hover:bg-black/5 text-text-primary"
-        >
-          <IconPlus className="w-5 h-5" style={{ color: 'var(--text-secondary)' }} />
-          Agregar
-        </button>
-        <button
-          onClick={() => navigate('/historial')}
-          className="flex items-center gap-3 mx-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all hover:bg-black/5 text-text-primary"
-        >
-          <IconHistory className="w-5 h-5" style={{ color: 'var(--text-secondary)' }} />
-          Historial
-        </button>
-      </div>
-
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 max-w-6xl mx-auto w-full">
-        {filtered.map((prenda) => (
-          <GarmentCard
-            key={prenda.id}
-            prenda={prenda}
-            onSelect={setSelectedPrenda}
-          />
-        ))}
-      </div>
+      {!loading && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-4 max-w-[1500px] mx-auto w-full pb-2">
+          {filtered.map((prenda) => (
+            <GarmentCard
+              key={prenda.id}
+              prenda={prenda}
+              onSelect={setSelectedPrenda}
+            />
+          ))}
+        </div>
+      )}
 
       {selectedPrenda && (
         <GarmentModal

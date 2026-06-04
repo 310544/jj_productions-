@@ -132,3 +132,16 @@ CREATE TRIGGER trg_rental_codigo
   BEFORE INSERT ON rentals
   FOR EACH ROW
   EXECUTE FUNCTION set_rental_codigo();
+
+-- 11. Tabla de gastos (registro manual de egresos del negocio)
+CREATE TABLE IF NOT EXISTS gastos (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  concepto TEXT NOT NULL,
+  categoria TEXT,
+  monto DECIMAL(10,2) NOT NULL CHECK (monto > 0),
+  fecha DATE NOT NULL DEFAULT CURRENT_DATE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+ALTER TABLE gastos ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Permitir todo en gastos" ON gastos FOR ALL TO anon USING (true) WITH CHECK (true);
+CREATE INDEX IF NOT EXISTS idx_gastos_fecha ON gastos(fecha);

@@ -99,8 +99,8 @@ export default function DatePicker({ value, onChange, label, placeholder = 'Sele
               className="rounded-[16px] p-4 shadow-lg w-64"
               onClick={(e) => e.stopPropagation()}
               style={{
-                background: '#ffffff',
-                border: '1px solid rgba(0,0,0,0.08)',
+                background: 'var(--surface)',
+                border: '1px solid var(--surface-border)',
                 boxShadow: '0 8px 32px rgba(0,0,0,0.10)',
               }}
             >

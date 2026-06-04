@@ -244,20 +244,18 @@ export default function GarmentModal({ prenda: initialPrenda, onClose, onDelete 
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: 'rgba(0,0,0,0.6)' }}
+      style={{ background: 'rgba(28,25,20,0.55)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
     >
       <motion.div
-        initial={{ opacity: 0, scale: 0.92 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.2, ease: 'easeOut' }}
-        className="w-full max-w-[380px] md:max-w-[500px] max-h-[85vh] overflow-y-auto rounded-[28px] px-4 pt-5 pb-6 space-y-4"
+        initial={{ opacity: 0, scale: 0.94, y: 8 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ duration: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }}
+        className="w-full max-w-[380px] md:max-w-[500px] max-h-[85vh] overflow-y-auto rounded-[24px] px-5 pt-5 pb-6 space-y-4"
         style={{
-          background: 'rgba(255,255,255,0.65)',
-          backdropFilter: 'blur(50px) saturate(200%)',
-          WebkitBackdropFilter: 'blur(50px) saturate(200%)',
-          border: '1px solid rgba(255,255,255,0.30)',
-          boxShadow: '0 20px 60px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.5)',
+          background: 'var(--surface)',
+          border: '1px solid rgba(201,168,76,0.18)',
+          boxShadow: '0 30px 80px rgba(28,20,8,0.28)',
           scrollbarWidth: 'none',
         }}
         onClick={(e) => e.stopPropagation()}
@@ -359,9 +357,9 @@ export default function GarmentModal({ prenda: initialPrenda, onClose, onDelete 
               <input
                 type="text"
                 inputMode="numeric"
-                value={editPrecio}
+                value={editPrecio ? Number(editPrecio).toLocaleString('es-CO') : ''}
                 onChange={(e) => setEditPrecio(e.target.value.replace(/\D/g, ''))}
-                placeholder="50000"
+                placeholder="50.000"
                 className="w-full rounded-[12px] px-4 py-2.5 text-sm text-text-primary mt-1 focus:outline-none focus:ring-2 focus:ring-accent/40"
                 style={inputStyle}
               />
@@ -503,7 +501,7 @@ export default function GarmentModal({ prenda: initialPrenda, onClose, onDelete 
               onClick={handleSave}
               disabled={saving}
               className="w-full py-3 font-semibold rounded-[14px] transition-all hover:brightness-110 disabled:opacity-50 flex items-center justify-center gap-2 text-white"
-              style={{ background: 'var(--accent-glow)' }}
+              style={{ background: 'var(--btn-primary)' }}
             >
               <IconCheck className="w-5 h-5" aria-hidden="true" />
               {saving ? 'Guardando...' : 'Guardar cambios'}
@@ -526,7 +524,7 @@ export default function GarmentModal({ prenda: initialPrenda, onClose, onDelete 
           <button
             onClick={() => setEditing(true)}
             className="w-full py-3 font-semibold rounded-[14px] transition-all hover:brightness-110 flex items-center justify-center gap-2 text-white"
-            style={{ background: 'var(--accent-glow)' }}
+            style={{ background: 'var(--btn-primary)' }}
           >
             <IconEdit className="w-5 h-5" aria-hidden="true" />
             Editar prenda

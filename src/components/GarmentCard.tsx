@@ -11,24 +11,41 @@ export default function GarmentCard({ prenda, onSelect }: Props) {
   const vendido = prenda.estado === 'vendido'
   const fechas = prenda.fechas_ocupado || []
 
+  const status = vendido
+    ? { bg: 'linear-gradient(135deg, #9CA3AF, #6B7280)', label: 'Vendido' }
+    : ocupado
+      ? { bg: 'linear-gradient(135deg, #F87171, #DC2626)', label: 'Ocupado' }
+      : { bg: 'linear-gradient(135deg, #34D399, #16A34A)', label: 'Disponible' }
+
   return (
     <div
       onClick={() => onSelect(prenda)}
-      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { onSelect(prenda) } }}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onSelect(prenda) }}
       role="button"
       tabIndex={0}
-      className="rounded-[16px] overflow-hidden flex flex-col p-2 text-left w-full cursor-pointer"
+      className="group relative rounded-[20px] overflow-hidden flex flex-col text-left w-full cursor-pointer
+                 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C9A84C]/50"
       style={{
-        background: '#ffffff',
-        border: '1px solid rgba(0,0,0,0.05)',
-        boxShadow: '0 2px 12px rgba(0,0,0,0.04), 0 1px 3px rgba(0,0,0,0.03)',
+        background: 'var(--surface)',
+        border: '1px solid var(--surface-border)',
+        boxShadow: '0 2px 6px rgba(0,0,0,0.05), 0 12px 30px rgba(28,20,8,0.12)',
+        transition: 'transform 0.3s cubic-bezier(0.22,1,0.36,1), box-shadow 0.3s ease, border-color 0.3s ease',
+      }}
+      onMouseEnter={(e) => {
+        const el = e.currentTarget as HTMLElement
+        el.style.transform = 'translateY(-6px)'
+        el.style.boxShadow = '0 18px 40px rgba(168,130,58,0.18), 0 6px 14px rgba(0,0,0,0.08)'
+        el.style.borderColor = 'rgba(201,168,76,0.35)'
+      }}
+      onMouseLeave={(e) => {
+        const el = e.currentTarget as HTMLElement
+        el.style.transform = 'translateY(0)'
+        el.style.boxShadow = '0 1px 2px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.05)'
+        el.style.borderColor = 'var(--surface-border)'
       }}
     >
-      {/* Recuadro interior con la foto */}
-      <div
-        className="relative w-full aspect-square overflow-hidden rounded-[18px]"
-        style={{ background: '#f1f1f3' }}
-      >
+      {/* Image — full bleed */}
+      <div className="relative w-full aspect-[3/4] overflow-hidden" style={{ background: '#ECEAE4' }}>
         {prenda.imagen_url ? (
           <img
             src={prenda.imagen_url}
@@ -37,94 +54,96 @@ export default function GarmentCard({ prenda, onSelect }: Props) {
             className="w-full h-full object-cover"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <span className="text-5xl opacity-20">👔</span>
+          <div className="w-full h-full flex flex-col items-center justify-center gap-2">
+            <span className="text-5xl opacity-10">👔</span>
           </div>
         )}
 
-        {ocupado && (
-          <div className="absolute inset-0 rounded-[18px] overflow-hidden flex flex-col items-center justify-center gap-1.5" style={{ background: 'rgba(0,0,0,0.55)' }}>
-            {fechas.map((f, i) => (
-              <p key={i} className="text-[11px] font-semibold px-2 py-0.5 rounded-full relative z-10" style={{
-                background: 'rgba(255,60,60,0.2)',
-                backdropFilter: 'blur(8px)',
-                WebkitBackdropFilter: 'blur(8px)',
-                color: '#ff3b3b',
-              }}>
-                {formatDateShort(f.fecha_inicio)} - {formatDateShort(f.fecha_fin)}
-              </p>
-            ))}
-            <span
-              className="absolute h-[4px] w-[141%] rounded-sm"
-              style={{
-                background: 'rgba(255,255,255,0.35)',
-                top: '50%',
-                left: '50%',
-                transform: 'translate(-50%, -50%) rotate(45deg)',
-              }}
-            />
-            <span
-              className="absolute h-[4px] w-[141%] rounded-sm"
-              style={{
-                background: 'rgba(255,255,255,0.35)',
-                top: '50%',
-                left: '50%',
-                transform: 'translate(-50%, -50%) rotate(-45deg)',
-              }}
-            />
-          </div>
-        )}
-
-        {vendido && (
-          <div className="absolute inset-0 rounded-[18px] flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.4)' }}>
-            <span className="text-white text-sm font-bold tracking-widest uppercase opacity-80">Vendido</span>
-          </div>
-        )}
-
-        {/* Indicador de estado */}
+        {/* Gradient bottom overlay */}
         <div
-          className="absolute top-2 left-2 w-6 h-6 rounded-full flex items-center justify-center"
+          className="absolute inset-x-0 bottom-0 h-28 pointer-events-none"
+          style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.50) 0%, rgba(0,0,0,0.08) 55%, transparent 100%)' }}
+        />
+
+        {/* Status pill — top left */}
+        <span
+          className="absolute top-3 left-3 px-3 py-1 rounded-full text-xs font-bold tracking-wide text-white"
           style={{
-            background: 'rgba(0,0,0,0.15)',
-            backdropFilter: 'blur(4px)',
-            border: '1px solid rgba(0,0,0,0.08)',
+            background: status.bg,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
           }}
         >
-          <div
-            className="w-1.5 h-1.5 rounded-full"
-            style={{
-              background: vendido ? 'var(--text-tertiary)' : ocupado ? 'var(--danger)' : 'var(--success)',
-              animation: vendido ? 'none' : 'pulse-dot 2s ease-in-out infinite',
-            }}
-          />
-        </div>
-        <style>{`
-          @keyframes pulse-dot {
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.5; transform: scale(1.3); }
-          }
-        `}</style>
+          {status.label}
+        </span>
 
-        {/* Etiqueta codigo */}
+        {/* Code chip — top right */}
         <span
-          className="absolute top-2.5 right-2.5 px-2 py-0.5 rounded-full text-[11px] font-bold tracking-wide"
+          className="absolute top-3 right-3 px-3 py-1 rounded-full text-xs font-extrabold tracking-wider"
           style={{
-            background: 'rgba(255,255,255,0.9)',
-            color: '#1a1a1e',
-            border: '1px solid rgba(0,0,0,0.06)',
-            boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+            background: 'rgba(17,17,17,0.78)',
+            backdropFilter: 'blur(10px)',
+            WebkitBackdropFilter: 'blur(10px)',
+            color: '#F8E9BE',
+            border: '1px solid rgba(201,168,76,0.55)',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
           }}
         >
           {prenda.codigo}
         </span>
+
+        {/* Ocupado dates at bottom of image */}
+        {ocupado && fechas.length > 0 && (
+          <div className="absolute bottom-2.5 inset-x-2.5 flex flex-col gap-1 items-start">
+            {fechas.map((f, i) => (
+              <span
+                key={i}
+                className="text-[10px] font-semibold px-2.5 py-[3px] rounded-full"
+                style={{
+                  background: 'rgba(0,0,0,0.40)',
+                  color: '#FCD34D',
+                  backdropFilter: 'blur(6px)',
+                  WebkitBackdropFilter: 'blur(6px)',
+                }}
+              >
+                {formatDateShort(f.fecha_inicio)} – {formatDateShort(f.fecha_fin)}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Vendido overlay */}
+        {vendido && (
+          <div className="absolute inset-0 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.42)' }}>
+            <span
+              className="text-[11px] font-bold tracking-[0.20em] uppercase px-4 py-1.5 rounded-full"
+              style={{
+                background: 'rgba(255,255,255,0.15)',
+                color: 'rgba(255,255,255,0.90)',
+                border: '1px solid rgba(255,255,255,0.25)',
+                backdropFilter: 'blur(8px)',
+              }}
+            >
+              Vendido
+            </span>
+          </div>
+        )}
       </div>
 
-      {/* Info abajo */}
-      <div className="px-1 pt-2 pb-1 flex flex-col gap-0.5">
-        {/* Nombre */}
-        <p className="text-sm font-medium truncate text-text-primary">
+      {/* Info */}
+      <div className="px-4 pt-3.5 pb-4 flex flex-col gap-1">
+        {prenda.categoria && (
+          <p className="text-[11px] font-bold uppercase tracking-[0.12em] truncate" style={{ color: 'var(--text-tertiary)' }}>
+            {prenda.categoria}
+          </p>
+        )}
+        <p className="text-base font-bold truncate text-text-primary leading-snug">
           {prenda.nombre}
         </p>
+        {prenda.precio > 0 && (
+          <p className="text-lg font-extrabold mt-0.5" style={{ color: 'var(--accent-dark)' }}>
+            ${prenda.precio.toLocaleString('es-CO')}
+          </p>
+        )}
       </div>
     </div>
   )

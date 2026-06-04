@@ -220,6 +220,16 @@ export default function Alquiler({ inPopup, onClose, editRentalId, onSaved }: Pr
   }
 
   function addGarment(g: Prenda) {
+    // Si ya hay fechas y esta prenda esta alquilada en un rango que se cruza, bloquear
+    if (fechaInicio && fechaFin && conflictingGarments?.has(g.id)) {
+      const fechas = conflictingDates.get(g.id) || 'esas fechas'
+      setConflictMessage(`${g.codigo} ya esta alquilada del ${fechas}.\nElige otras fechas o quita el cruce.`)
+      setShowConflictPopup(true)
+      setSearchQuery('')
+      setSearchResults([])
+      setShowSearch(false)
+      return
+    }
     setSelectedGarments([...selectedGarments, { prenda: g, tipo: 'alquiler' }])
     setSearchQuery('')
     setSearchResults([])
@@ -337,12 +347,13 @@ export default function Alquiler({ inPopup, onClose, editRentalId, onSaved }: Pr
         return
       }
 
-      // En modo edicion, saltar validacion de disponibilidad (las prendas ya estan en esta factura)
+      // Solo bloquear prendas vendidas; la disponibilidad por fechas ya se valido arriba.
+      // Una prenda 'ocupado' puede alquilarse en fechas que no se crucen con sus otros alquileres.
       if (!editRentalId) {
-        const noDisponibles = selectedGarments
-          .filter(item => item.tipo === 'alquiler' && item.prenda.estado !== 'disponible')
-        if (noDisponibles.length > 0) {
-          setError(`Prendas no disponibles: ${noDisponibles.map(i => i.prenda.codigo).join(', ')}`)
+        const vendidas = selectedGarments
+          .filter(item => item.tipo === 'alquiler' && item.prenda.estado === 'vendido')
+        if (vendidas.length > 0) {
+          setError(`Prendas vendidas, no se pueden alquilar: ${vendidas.map(i => i.prenda.codigo).join(', ')}`)
           setSaving(false)
           return
         }
@@ -621,123 +632,224 @@ export default function Alquiler({ inPopup, onClose, editRentalId, onSaved }: Pr
     const ctx = canvas.getContext('2d')
     if (!ctx) return null
 
+    const scale = 3
     const w = 500
     const pad = 30
-    const lineH = 26
-    let y = pad
+    const headerH = 92
+    const FONT = 'Plus Jakarta Sans, system-ui, sans-serif'
+
+    const money = (n: number) =>
+      n.toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 })
 
     const itemsCount = selectedGarments.length
-    const pagosCount = pagos.filter(p => (parseInt(p.monto) || 0) > 0).length
-    canvas.height = pad + 40 + 30 + (lineH * 2) + 18 + (itemsCount * 22) + 20 + (pagosCount * 20) + 20 + (lineH * 5) + pad + 10
+    const validPagos = pagos.filter(p => (parseInt(p.monto) || 0) > 0)
+    const pagosCount = validPagos.length
+    const clientRows = 1 + 1 + (direccion.trim() ? 1 : 0) + 1 + (quienEntrega.trim() ? 1 : 0)
+    const totalsBoxH = 122
 
-    // Fondo
+    // Altura dinamica (debe coincidir con los incrementos de dibujo)
+    let H = headerH + 30
+    H += 18 + clientRows * 24 + 22                 // datos cliente + divisor
+    H += 18 + itemsCount * 26 + 22                 // prendas + divisor
+    if (pagosCount > 0) H += 18 + pagosCount * 24 + 22
+    H += totalsBoxH + 18
+    H += 26 + 22                                   // footer + pad inferior
+
+    canvas.width = w * scale
+    canvas.height = H * scale
+    ctx.scale(scale, scale)
+
+    // Fondo (esquinas redondeadas, transparentes fuera)
     ctx.fillStyle = '#ffffff'
     ctx.beginPath()
-    ctx.roundRect(0, 0, canvas.width, canvas.height, 16)
+    ctx.roundRect(0, 0, w, H, 20)
     ctx.fill()
 
-    // Factura #
-    ctx.fillStyle = '#111111'
-    ctx.font = 'bold 18px Plus Jakarta Sans, sans-serif'
-    ctx.fillText(`Factura ${savedCodigo}`, pad, y)
-    y += 20
-    ctx.fillStyle = '#888888'
-    ctx.font = '11px Plus Jakarta Sans, sans-serif'
-    ctx.fillText('RentaTraje', pad, y)
-    y += 26
-
-    // Linea
-    ctx.strokeStyle = '#e5e5e5'
-    ctx.lineWidth = 1
+    // ===== Header smoking =====
+    const hg = ctx.createLinearGradient(0, 0, w, headerH)
+    hg.addColorStop(0, '#231D15')
+    hg.addColorStop(1, '#14110B')
+    ctx.fillStyle = hg
     ctx.beginPath()
-    ctx.moveTo(pad, y)
-    ctx.lineTo(w - pad, y)
-    ctx.stroke()
-    y += 16
+    ctx.roundRect(0, 0, w, headerH, [20, 20, 0, 0])
+    ctx.fill()
 
-    // Datos factura
-    ctx.fillStyle = '#333333'
-    ctx.font = '12px Plus Jakarta Sans, sans-serif'
-    ctx.fillText(`Vendedor: ${vendedor}`, pad, y)
-    y += lineH
-    ctx.fillText(`Cliente: ${customerName.trim()}`, pad, y)
-    y += lineH
-    ctx.fillText(`Cedula: ${cedula.trim()}  |  Tel: ${customerPhone.trim()}`, pad, y)
-    y += lineH
-    if (direccion.trim()) {
-      ctx.fillText(`Direccion: ${direccion.trim()}`, pad, y)
-      y += lineH
-    }
-    if (quienEntrega.trim()) {
-      ctx.fillText(`Entrega: ${quienEntrega.trim()}`, pad, y)
-      y += lineH
-    }
-    y += 6
+    // Marca
+    ctx.textAlign = 'left'
+    ctx.fillStyle = '#E8C766'
+    ctx.font = `800 24px ${FONT}`
+    ctx.fillText('JJ PRODUCTION', pad, 44)
+    ctx.fillStyle = 'rgba(255,255,255,0.55)'
+    ctx.font = `500 11px ${FONT}`
+    ctx.fillText('Alquiler & Venta de Trajes', pad, 64)
 
-    // Prendas
-    ctx.fillStyle = '#111111'
-    ctx.font = 'bold 12px Plus Jakarta Sans, sans-serif'
-    ctx.fillText('Items:', pad, y)
-    y += lineH
-    ctx.fillStyle = '#444444'
-    ctx.font = '11px Plus Jakarta Sans, sans-serif'
-    for (const item of selectedGarments) {
-      const tipoLabel = item.tipo === 'alquiler' ? 'ALQ' : 'VTA'
-      ctx.fillText(`${tipoLabel}  ${item.prenda.codigo}  —  ${item.prenda.nombre}`, pad + 8, y)
-      y += 22
-    }
-    y += 6
+    // Factura # (derecha)
+    ctx.textAlign = 'right'
+    ctx.fillStyle = 'rgba(255,255,255,0.45)'
+    ctx.font = `600 10px ${FONT}`
+    ctx.fillText('FACTURA', w - pad, 38)
+    ctx.fillStyle = '#F2E4BC'
+    ctx.font = `800 18px ${FONT}`
+    ctx.fillText(savedCodigo, w - pad, 60)
+    ctx.textAlign = 'left'
 
-    // Pagos
-    if (pagosCount > 0) {
-      ctx.strokeStyle = '#e5e5e5'
+    // Barra de acento dorada
+    const gb = ctx.createLinearGradient(0, 0, w, 0)
+    gb.addColorStop(0, '#D4AF37')
+    gb.addColorStop(1, '#A8823A')
+    ctx.fillStyle = gb
+    ctx.fillRect(0, headerH, w, 4)
+
+    let y = headerH + 36
+
+    const sectionTitle = (t: string) => {
+      ctx.fillStyle = '#A8823A'
+      ctx.font = `700 11px ${FONT}`
+      ctx.fillText(t.toUpperCase(), pad, y)
+      y += 18
+    }
+    const divider = () => {
+      y += 8
+      ctx.strokeStyle = 'rgba(0,0,0,0.08)'
+      ctx.lineWidth = 1
       ctx.beginPath()
       ctx.moveTo(pad, y)
       ctx.lineTo(w - pad, y)
       ctx.stroke()
       y += 14
-
-      ctx.fillStyle = '#111111'
-      ctx.font = 'bold 12px Plus Jakarta Sans, sans-serif'
-      ctx.fillText('Abonos:', pad, y)
-      y += lineH
-      ctx.fillStyle = '#555555'
-      ctx.font = '11px Plus Jakarta Sans, sans-serif'
-      for (const p of pagos) {
-        const monto = parseInt(p.monto) || 0
-        if (monto <= 0) continue
-        ctx.fillText(`${p.fecha}  —  ${monto.toLocaleString('es-CO', { style: 'currency', currency: 'COP' })}`, pad + 8, y)
-        y += 20
-      }
-      y += 6
+    }
+    const row = (label: string, value: string) => {
+      ctx.fillStyle = '#9A9488'
+      ctx.font = `500 12px ${FONT}`
+      ctx.fillText(label, pad, y)
+      const lw = ctx.measureText(label).width
+      ctx.fillStyle = '#1C1A14'
+      ctx.font = `600 12px ${FONT}`
+      ctx.fillText(value, pad + lw + 8, y)
+      y += 24
     }
 
-    // Totales
-    const formatCOP = (n: number) =>
-      n.toLocaleString('es-CO', { style: 'currency', currency: 'COP' })
+    // ===== Datos del cliente =====
+    sectionTitle('Datos del cliente')
+    row('Cliente', customerName.trim() || '-')
+    row('Cédula / Tel', `${cedula.trim() || '-'}  ·  ${customerPhone.trim() || '-'}`)
+    if (direccion.trim()) row('Dirección', direccion.trim())
+    row('Vendedor', vendedor)
+    if (quienEntrega.trim()) row('Entrega', quienEntrega.trim())
+    divider()
 
-    ctx.strokeStyle = '#e5e5e5'
+    // ===== Prendas =====
+    sectionTitle(`Prendas (${itemsCount})`)
+    for (const item of selectedGarments) {
+      const isAlq = item.tipo === 'alquiler'
+      // pill ALQ/VTA
+      const pillW = 36
+      ctx.fillStyle = isAlq ? 'rgba(201,168,76,0.16)' : 'rgba(0,0,0,0.06)'
+      ctx.beginPath()
+      ctx.roundRect(pad, y - 11, pillW, 16, 5)
+      ctx.fill()
+      ctx.fillStyle = isAlq ? '#A8823A' : '#7A746A'
+      ctx.font = `700 9px ${FONT}`
+      ctx.textAlign = 'center'
+      ctx.fillText(isAlq ? 'ALQ' : 'VTA', pad + pillW / 2, y)
+      ctx.textAlign = 'left'
+      // nombre
+      ctx.fillStyle = '#1C1A14'
+      ctx.font = `600 12px ${FONT}`
+      ctx.fillText(item.prenda.codigo, pad + pillW + 10, y)
+      const cw = ctx.measureText(item.prenda.codigo).width
+      ctx.fillStyle = '#9A9488'
+      ctx.font = `400 12px ${FONT}`
+      ctx.fillText(`  ${item.prenda.nombre}`, pad + pillW + 10 + cw, y)
+      y += 26
+    }
+    divider()
+
+    // ===== Abonos =====
+    if (pagosCount > 0) {
+      sectionTitle(`Abonos (${pagosCount})`)
+      for (const p of validPagos) {
+        const monto = parseInt(p.monto) || 0
+        ctx.fillStyle = '#9A9488'
+        ctx.font = `400 12px ${FONT}`
+        ctx.fillText(p.fecha, pad, y)
+        ctx.textAlign = 'right'
+        ctx.fillStyle = '#16a34a'
+        ctx.font = `600 12px ${FONT}`
+        ctx.fillText(money(monto), w - pad, y)
+        ctx.textAlign = 'left'
+        y += 24
+      }
+      divider()
+    }
+
+    // ===== Caja de totales =====
+    const pagado = deuda <= 0
+    const boxTop = y
+    ctx.fillStyle = '#FBF6E7'
+    ctx.strokeStyle = 'rgba(201,168,76,0.40)'
+    ctx.lineWidth = 1
     ctx.beginPath()
-    ctx.moveTo(pad, y)
-    ctx.lineTo(w - pad, y)
+    ctx.roundRect(pad, boxTop, w - pad * 2, totalsBoxH, 14)
+    ctx.fill()
     ctx.stroke()
-    y += 20
 
-    ctx.fillStyle = '#111111'
-    ctx.font = '13px Plus Jakarta Sans, sans-serif'
-    ctx.fillText(`Total:    ${formatCOP(parseFloat(total) || 0)}`, pad, y)
-    y += lineH
-    ctx.fillText(`Abonado:   ${formatCOP(abonoTotal)}`, pad, y)
-    y += lineH
+    const bx = pad + 18
+    const bxr = w - pad - 18
+    let by = boxTop + 28
 
-    ctx.fillStyle = deuda > 0 ? '#d44' : '#333'
-    ctx.font = 'bold 13px Plus Jakarta Sans, sans-serif'
-    ctx.fillText(`Deuda:    ${formatCOP(deuda > 0 ? deuda : 0)}`, pad, y)
-    y += lineH + 4
+    const totalRow = (label: string, value: string, color: string, bold = false) => {
+      ctx.textAlign = 'left'
+      ctx.fillStyle = '#7A746A'
+      ctx.font = `500 12px ${FONT}`
+      ctx.fillText(label, bx, by)
+      ctx.textAlign = 'right'
+      ctx.fillStyle = color
+      ctx.font = `${bold ? 800 : 700} ${bold ? 15 : 13}px ${FONT}`
+      ctx.fillText(value, bxr, by)
+      ctx.textAlign = 'left'
+    }
 
-    ctx.fillStyle = '#888888'
-    ctx.font = '11px Plus Jakarta Sans, sans-serif'
-    ctx.fillText(`Entrega: ${fechaInicio}  |  Devolucion: ${fechaFin}`, pad, y)
+    totalRow('Total', money(parseFloat(total) || 0), '#1C1A14')
+    by += 26
+    totalRow('Abonado', money(abonoTotal), '#16a34a')
+    by += 14
+    ctx.strokeStyle = 'rgba(201,168,76,0.30)'
+    ctx.beginPath()
+    ctx.moveTo(bx, by)
+    ctx.lineTo(bxr, by)
+    ctx.stroke()
+    by += 24
+
+    if (pagado) {
+      ctx.textAlign = 'left'
+      ctx.fillStyle = '#7A746A'
+      ctx.font = `500 12px ${FONT}`
+      ctx.fillText('Estado', bx, by)
+      // badge PAGADO
+      ctx.textAlign = 'right'
+      ctx.font = `800 12px ${FONT}`
+      const txt = 'PAGADO'
+      const tw = ctx.measureText(txt).width
+      ctx.fillStyle = 'rgba(22,163,74,0.14)'
+      ctx.beginPath()
+      ctx.roundRect(bxr - tw - 20, by - 14, tw + 20, 20, 10)
+      ctx.fill()
+      ctx.fillStyle = '#16a34a'
+      ctx.fillText(txt, bxr - 10, by)
+      ctx.textAlign = 'left'
+    } else {
+      totalRow('Saldo pendiente', money(deuda), '#dc2626', true)
+    }
+
+    y = boxTop + totalsBoxH + 24
+
+    // ===== Footer =====
+    ctx.textAlign = 'center'
+    ctx.fillStyle = '#9A9488'
+    ctx.font = `500 11px ${FONT}`
+    ctx.fillText(`Entrega ${fechaInicio}   ·   Devolución ${fechaFin}`, w / 2, y)
+    ctx.textAlign = 'left'
 
     return new Promise((resolve) => {
       canvas.toBlob((blob) => resolve(blob), 'image/png')
@@ -768,20 +880,25 @@ export default function Alquiler({ inPopup, onClose, editRentalId, onSaved }: Pr
     URL.revokeObjectURL(url)
 
     const phone = customerPhone.trim().replace(/\D/g, '')
-    const formatCOP = (n: number) => n.toLocaleString('es-CO', { style: 'currency', currency: 'COP' })
+    const formatCOP = (n: number) => n.toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 })
     const itemsText = selectedGarments.map(item =>
-      `${item.tipo === 'alquiler' ? 'ALQ' : 'VTA'} ${item.prenda.codigo} - ${item.prenda.nombre}`
+      `• ${item.tipo === 'alquiler' ? 'ALQ' : 'VTA'} ${item.prenda.codigo} - ${item.prenda.nombre}`
     ).join('%0A')
+    const pagado = deuda <= 0
 
     const msg =
-      `*RentaTraje - Factura ${savedCodigo}*%0A%0A` +
-      `Vendedor: ${vendedor}%0A` +
-      `Cliente: ${customerName.trim()}%0A` +
-      `Cedula: ${cedula.trim()}%0A` +
-      `%0A*Items:*%0A${itemsText}%0A%0A` +
-      `Total: ${formatCOP(parseFloat(total) || 0)}%0A` +
-      `Abonado: ${formatCOP(abonoTotal)}%0A` +
-      `Deuda: ${formatCOP(deuda > 0 ? deuda : 0)}`
+      `*JJ PRODUCTION*%0A_Alquiler & Venta de Trajes_%0A%0A` +
+      `*Factura ${savedCodigo}*%0A` +
+      `━━━━━━━━━━━━━%0A` +
+      `*Cliente:* ${customerName.trim()}%0A` +
+      `*Cédula:* ${cedula.trim()}%0A` +
+      `*Vendedor:* ${vendedor}%0A%0A` +
+      `*Prendas:*%0A${itemsText}%0A%0A` +
+      `━━━━━━━━━━━━━%0A` +
+      `Total:  *${formatCOP(parseFloat(total) || 0)}*%0A` +
+      `Abonado:  ${formatCOP(abonoTotal)}%0A` +
+      (pagado ? `*✅ PAGADO*` : `*Saldo pendiente:  ${formatCOP(deuda)}*`) +
+      `%0A%0A_Entrega ${fechaInicio}  ·  Devolución ${fechaFin}_`
     window.open(`https://wa.me/${phone}?text=${msg}`, '_blank')
   }
 
@@ -926,7 +1043,7 @@ export default function Alquiler({ inPopup, onClose, editRentalId, onSaved }: Pr
                 onClick={(e) => e.stopPropagation()}
                 className="absolute top-full mt-1 left-0 right-0 rounded-[12px] py-1 z-20"
                 style={{
-                  background: '#ffffff',
+                  background: 'var(--surface)',
                   border: '1px solid rgba(0,0,0,0.08)',
                   boxShadow: '0 8px 32px rgba(0,0,0,0.10)',
                 }}
@@ -975,7 +1092,7 @@ export default function Alquiler({ inPopup, onClose, editRentalId, onSaved }: Pr
                 onClick={(e) => e.stopPropagation()}
                 className="absolute top-full mt-1 left-0 right-0 rounded-[12px] py-1 z-20"
                 style={{
-                  background: '#ffffff',
+                  background: 'var(--surface)',
                   border: '1px solid rgba(0,0,0,0.08)',
                   boxShadow: '0 8px 32px rgba(0,0,0,0.10)',
                 }}
@@ -1164,7 +1281,7 @@ export default function Alquiler({ inPopup, onClose, editRentalId, onSaved }: Pr
             type="button"
             onClick={addPago}
             className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all hover:brightness-110 text-white"
-            style={{ background: 'var(--accent-glow)' }}
+            style={{ background: 'linear-gradient(135deg, #D4AF37 0%, #A8823A 100%)', boxShadow: '0 3px 10px rgba(184,134,11,0.28)' }}
           >
             <IconCash className="w-3.5 h-3.5" />
             Agregar abono
@@ -1217,7 +1334,7 @@ export default function Alquiler({ inPopup, onClose, editRentalId, onSaved }: Pr
               className="text-xs font-medium text-right"
               style={{ color: 'var(--success)' }}
             >
-              Total abonado: {abonoTotal.toLocaleString('es-CO', { style: 'currency', currency: 'COP' })}
+              Total abonado: {abonoTotal.toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 })}
             </p>
           </div>
         )}
@@ -1231,10 +1348,9 @@ export default function Alquiler({ inPopup, onClose, editRentalId, onSaved }: Pr
       <div
         className="rounded-[16px] p-4 space-y-3"
         style={{
-          background: 'rgba(255,255,255,0.65)',
-          backdropFilter: 'blur(50px) saturate(200%)',
-          WebkitBackdropFilter: 'blur(50px) saturate(200%)',
-          border: '1px solid rgba(0,0,0,0.10)',
+          background: 'var(--surface)',
+          border: '1px solid rgba(201,168,76,0.22)',
+          borderTop: '2px solid #C9A84C',
         }}
       >
         <h3 className="font-semibold text-text-primary text-sm">Totales</h3>
@@ -1265,14 +1381,12 @@ export default function Alquiler({ inPopup, onClose, editRentalId, onSaved }: Pr
             <div
               className="w-full rounded-[12px] px-4 py-2.5 text-sm font-medium mt-1"
               style={{
-                background: 'rgba(255,255,255,0.65)',
-                backdropFilter: 'blur(50px) saturate(200%)',
-                WebkitBackdropFilter: 'blur(50px) saturate(200%)',
-                border: '1px solid rgba(0,0,0,0.10)',
+                background: 'var(--field-bg)',
+                border: '1px solid var(--field-border)',
                 color: 'var(--success)',
               }}
             >
-              {abonoTotal.toLocaleString('es-CO', { style: 'currency', currency: 'COP' })}
+              {abonoTotal.toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 })}
             </div>
           </div>
           <div>
@@ -1282,14 +1396,12 @@ export default function Alquiler({ inPopup, onClose, editRentalId, onSaved }: Pr
             <div
               className="w-full rounded-[12px] px-4 py-2.5 text-sm font-medium mt-1"
               style={{
-                background: 'rgba(255,255,255,0.65)',
-                backdropFilter: 'blur(50px) saturate(200%)',
-                WebkitBackdropFilter: 'blur(50px) saturate(200%)',
-                border: '1px solid rgba(0,0,0,0.10)',
+                background: 'var(--field-bg)',
+                border: '1px solid var(--field-border)',
                 color: deuda > 0 ? 'var(--danger)' : 'var(--success)',
               }}
             >
-              {(deuda > 0 ? deuda : 0).toLocaleString('es-CO', { style: 'currency', currency: 'COP' })}
+              {(deuda > 0 ? deuda : 0).toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 })}
             </div>
           </div>
         </div>
@@ -1305,7 +1417,7 @@ export default function Alquiler({ inPopup, onClose, editRentalId, onSaved }: Pr
         onClick={handleSave}
         disabled={saving}
         className="w-full py-3.5 text-white font-semibold rounded-[14px] transition-all hover:brightness-110 disabled:opacity-50"
-        style={{ background: 'var(--accent-glow)' }}
+        style={{ background: 'linear-gradient(135deg, #D4AF37 0%, #A8823A 100%)', boxShadow: '0 6px 18px rgba(184,134,11,0.30)' }}
       >
         {saving ? 'Guardando...' : editRentalId ? 'Guardar cambios' : 'Registrar factura'}
       </button>
@@ -1320,11 +1432,9 @@ export default function Alquiler({ inPopup, onClose, editRentalId, onSaved }: Pr
           <div
             className="w-full max-w-[340px] rounded-[24px] px-5 pt-6 pb-5 text-center space-y-4"
             style={{
-              background: 'rgba(255,255,255,0.92)',
-              backdropFilter: 'blur(30px)',
-              WebkitBackdropFilter: 'blur(30px)',
-              border: '1px solid rgba(0,0,0,0.08)',
-              boxShadow: '0 20px 60px rgba(0,0,0,0.12)',
+              background: 'var(--surface)',
+              border: '1px solid rgba(201,168,76,0.22)',
+              boxShadow: '0 24px 64px rgba(0,0,0,0.18)',
             }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -1364,11 +1474,10 @@ export default function Alquiler({ inPopup, onClose, editRentalId, onSaved }: Pr
           <div
             className="w-full max-w-[380px] rounded-[28px] px-4 pt-5 pb-6 space-y-4"
             style={{
-              background: 'rgba(255,255,255,0.92)',
-              backdropFilter: 'blur(40px) saturate(180%)',
-              WebkitBackdropFilter: 'blur(40px) saturate(180%)',
-              border: '1px solid rgba(0,0,0,0.08)',
-              boxShadow: '0 20px 60px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.6)',
+              background: 'var(--surface)',
+              border: '1px solid rgba(201,168,76,0.22)',
+              borderTop: '2px solid #C9A84C',
+              boxShadow: '0 24px 64px rgba(0,0,0,0.18)',
             }}
             onClick={(e) => e.stopPropagation()}
           >

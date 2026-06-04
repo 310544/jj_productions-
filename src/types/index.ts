@@ -55,3 +55,11 @@ export interface Pago {
   monto: number
   fecha: string
 }
+
+export interface Gasto {
+  id: number
+  concepto: string
+  categoria?: string
+  monto: number
+  fecha: string
+}
