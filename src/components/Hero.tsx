@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, type CSSProperties } from 'react'
-import { IconSearch, IconBell, IconX, IconAlertTriangle, IconCalendarCheck, IconFileInvoice, IconPlus } from '@tabler/icons-react'
+import { IconSearch, IconBell, IconX, IconAlertTriangle, IconCalendarCheck } from '@tabler/icons-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { supabase } from '../lib/supabase'
 import { formatDate } from '../lib/formatDate'

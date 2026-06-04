@@ -33,11 +33,6 @@ const navItems: NavItem[] = [
   { label: 'Contabilidad', icon: <ChartBar size={20} weight="light" />, path: '/contabilidad' },
 ]
 
-const actionItems: NavItem[] = [
-  { label: 'Nueva Factura', icon: <Receipt size={20} weight="light" />, popup: 'alquiler' },
-  { label: 'Agregar Prenda', icon: <Plus size={20} weight="light" />, popup: 'agregar' },
-]
-
 function ModalWrapper({
   open,
   onClose,

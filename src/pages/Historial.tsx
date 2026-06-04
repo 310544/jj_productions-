@@ -53,7 +53,7 @@ export default function Historial() {
       .order('created_at', { ascending: false })
       .limit(200)
 
-    if (data) setRentals(data as RentalSummary[])
+    if (data) setRentals(data as unknown as RentalSummary[])
     setLoading(false)
   }
 
