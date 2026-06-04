@@ -126,7 +126,7 @@ export default function Hero({ searchValue, onSearchChange }: HeroProps) {
         <div className="flex items-center gap-3">
           <div className="relative flex-1">
             <IconSearch
-              className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 pointer-events-none z-10"
+              className="absolute left-4 md:left-5 top-1/2 -translate-y-1/2 w-5 h-5 md:w-6 md:h-6 pointer-events-none z-10"
               style={{ color: '#B8860B' }}
               aria-hidden="true"
             />
@@ -135,7 +135,7 @@ export default function Hero({ searchValue, onSearchChange }: HeroProps) {
               placeholder="Buscar por codigo..."
               value={searchValue}
               onChange={(e) => onSearchChange(e.target.value)}
-              className="relative w-full pl-12 pr-5 py-3.5 rounded-full text-sm placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40 focus:bg-white transition-all duration-200"
+              className="relative w-full pl-12 md:pl-14 pr-5 md:pr-6 py-3.5 md:py-4 rounded-full text-sm md:text-base placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40 focus:bg-white transition-all duration-200"
               style={{
                 ...searchStyle,
                 color: 'var(--text-primary)',
@@ -147,12 +147,12 @@ export default function Hero({ searchValue, onSearchChange }: HeroProps) {
           <div className="relative shrink-0" ref={popupRef}>
             <button
               onClick={() => setOpen(!open)}
-              className="relative w-11 h-11 flex items-center justify-center rounded-full shrink-0 transition-all duration-200 hover:shadow-md active:scale-95 focus:outline-none focus:ring-2 focus:ring-[#D4AF37]/30"
+              className="relative w-11 h-11 md:w-14 md:h-14 flex items-center justify-center rounded-full shrink-0 transition-all duration-200 hover:shadow-md active:scale-95 focus:outline-none focus:ring-2 focus:ring-[#D4AF37]/30"
               style={bellStyle}
               aria-label="Notificaciones"
             >
               <IconBell
-                className="w-5 h-5"
+                className="w-5 h-5 md:w-6 md:h-6"
                 stroke={1.5}
                 style={{ color: 'var(--text-secondary)' }}
               />

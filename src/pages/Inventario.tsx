@@ -59,7 +59,7 @@ export default function Inventario() {
       )}
 
       {loading && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-4 max-w-[1500px] mx-auto w-full pb-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 xl:grid-cols-4 gap-4 max-w-[1500px] mx-auto w-full pb-2">
           {Array.from({ length: 10 }).map((_, i) => (
             <div
               key={i}
@@ -87,7 +87,7 @@ export default function Inventario() {
       )}
 
       {!loading && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-4 max-w-[1500px] mx-auto w-full pb-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 xl:grid-cols-4 gap-4 max-w-[1500px] mx-auto w-full pb-2">
           {filtered.map((prenda) => (
             <GarmentCard
               key={prenda.id}

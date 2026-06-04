@@ -37,7 +37,7 @@ function chipStyle(isActive: boolean): React.CSSProperties {
     border: '1px solid rgba(201,168,76,0.22)',
     color: 'var(--text-secondary)',
     letterSpacing: '0.04em',
-    boxShadow: '0 2px 6px rgba(0,0,0,0.05), 0 6px 16px rgba(28,20,8,0.10)',
+    boxShadow: '0 4px 12px rgba(28,20,8,0.10)',
   }
 }
 
@@ -48,7 +48,7 @@ export default function CategoryFilter({ active, onChange }: Props) {
   ]
 
   return (
-    <div className="flex gap-2.5 overflow-x-auto pb-1">
+    <div className="flex gap-3.5 overflow-x-auto px-0.5 py-2.5 -mt-2.5 mb-1">
       {items.map((item) => {
         const isActive = active === item.key
         return (
