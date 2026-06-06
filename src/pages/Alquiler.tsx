@@ -16,6 +16,7 @@ const VENDEDORES: Vendedor[] = ['Jhoan Becerra', 'Karen', 'Barbara']
 interface GarmentSeleccionada {
   prenda: Prenda
   tipo: TipoItem
+  precio: string
 }
 
 interface PagoLocal {
@@ -55,6 +56,7 @@ export default function Alquiler({ inPopup, onClose, editRentalId, onSaved }: Pr
   const [savedCodigo, setSavedCodigo] = useState('')
   const [openVendedor, setOpenVendedor] = useState(false)
   const [openEntrega, setOpenEntrega] = useState(false)
+  const [nombreDuplicado, setNombreDuplicado] = useState('')
 
   const [conflictingGarments, setConflictingGarments] = useState<Set<number> | null>(null)
   const [conflictingDates, setConflictingDates] = useState<Map<number, string>>(new Map())
@@ -117,6 +119,7 @@ export default function Alquiler({ inPopup, onClose, editRentalId, onSaved }: Pr
         const mapped: GarmentSeleccionada[] = items.map((item: any) => ({
           prenda: item.garments,
           tipo: item.tipo as TipoItem,
+          precio: item.precio ? String(Math.round(item.precio)) : '',
         }))
         setSelectedGarments(mapped)
         setEditItemsOriginal(items.map((item: any) => ({
@@ -230,10 +233,22 @@ export default function Alquiler({ inPopup, onClose, editRentalId, onSaved }: Pr
       setShowSearch(false)
       return
     }
-    setSelectedGarments([...selectedGarments, { prenda: g, tipo: 'alquiler' }])
+    setSelectedGarments([...selectedGarments, { prenda: g, tipo: 'alquiler', precio: (g as any).precio ? String(Math.round((g as any).precio)) : '' }])
     setSearchQuery('')
     setSearchResults([])
     setShowSearch(false)
+  }
+
+  // Avisar si ya existe un cliente con el mismo nombre y apellido
+  async function checkNombreDuplicado() {
+    const nombre = customerName.trim().replace(/\s+/g, ' ')
+    if (nombre.split(' ').filter(Boolean).length < 2) { setNombreDuplicado(''); return }
+    const { data } = await supabase
+      .from('customers')
+      .select('id, nombre')
+      .ilike('nombre', nombre)
+      .limit(1)
+    setNombreDuplicado(data && data.length > 0 ? data[0].nombre : '')
   }
 
   function removeGarment(index: number) {
@@ -247,6 +262,19 @@ export default function Alquiler({ inPopup, onClose, editRentalId, onSaved }: Pr
         : item
     ))
   }
+
+  function updateGarmentPrecio(index: number, raw: string) {
+    const digits = raw.replace(/\D/g, '')
+    setSelectedGarments(prev => prev.map((item, i) =>
+      i === index ? { ...item, precio: digits } : item
+    ))
+  }
+
+  // Total = suma automática del precio de cada prenda
+  useEffect(() => {
+    const suma = selectedGarments.reduce((s, it) => s + (parseInt(it.precio) || 0), 0)
+    setTotal(suma ? String(suma) : '')
+  }, [selectedGarments])
 
   // Pagos/abonos
   function addPago() {
@@ -278,14 +306,13 @@ export default function Alquiler({ inPopup, onClose, editRentalId, onSaved }: Pr
     return num.toLocaleString('es-CO')
   }
 
-  function handleTotalChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const raw = e.target.value.replace(/\D/g, '')
-    setTotal(raw)
-  }
-
   async function handleSave() {
     if (!customerName.trim() || !customerPhone.trim()) {
       setError('Completa nombre y telefono del cliente')
+      return
+    }
+    if (customerName.trim().split(/\s+/).filter(Boolean).length < 2) {
+      setError('Ingresa nombre y apellido del cliente (mínimo 2 palabras)')
       return
     }
     if (!cedula.trim()) {
@@ -305,7 +332,7 @@ export default function Alquiler({ inPopup, onClose, editRentalId, onSaved }: Pr
       return
     }
     if (!total || parseFloat(total) <= 0) {
-      setError('Ingresa el monto total')
+      setError('Ingresa el precio de las prendas')
       return
     }
 
@@ -453,7 +480,7 @@ export default function Alquiler({ inPopup, onClose, editRentalId, onSaved }: Pr
       const items = selectedGarments.map(item => ({
         rental_id: editRentalId,
         garment_id: item.prenda.id,
-        precio: item.prenda.precio || 0,
+        precio: parseInt(item.precio) || 0,
         tipo: item.tipo,
       }))
 
@@ -542,7 +569,7 @@ export default function Alquiler({ inPopup, onClose, editRentalId, onSaved }: Pr
       const items = selectedGarments.map(item => ({
         rental_id: rental.id,
         garment_id: item.prenda.id,
-        precio: item.prenda.precio || 0,
+        precio: parseInt(item.precio) || 0,
         tipo: item.tipo,
       }))
 
@@ -761,6 +788,12 @@ export default function Alquiler({ inPopup, onClose, editRentalId, onSaved }: Pr
       ctx.fillStyle = '#9A9488'
       ctx.font = `400 12px ${FONT}`
       ctx.fillText(`  ${item.prenda.nombre}`, pad + pillW + 10 + cw, y)
+      // precio por prenda (derecha)
+      ctx.textAlign = 'right'
+      ctx.fillStyle = '#1C1A14'
+      ctx.font = `600 12px ${FONT}`
+      ctx.fillText(money(parseInt(item.precio) || 0), w - pad, y)
+      ctx.textAlign = 'left'
       y += 26
     }
     divider()
@@ -946,11 +979,18 @@ export default function Alquiler({ inPopup, onClose, editRentalId, onSaved }: Pr
               type="text"
               value={customerName}
               onChange={(e) => setCustomerName(e.target.value)}
-              placeholder="Nombre completo"
+              onBlur={checkNombreDuplicado}
+              placeholder="Nombre y apellido"
               className="w-full rounded-[12px] pl-11 pr-4 py-3 text-base text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-accent/40"
               style={inputStyle}
             />
           </div>
+          {nombreDuplicado && !editRentalId && (
+            <p className="mt-1.5 text-xs flex items-center gap-1.5" style={{ color: '#B7791F' }}>
+              <IconAlertTriangle className="w-3.5 h-3.5 shrink-0" />
+              Ya existe un cliente llamado «{nombreDuplicado}». Verifica que no sea un duplicado.
+            </p>
+          )}
         </div>
 
         <div className="grid grid-cols-2 gap-3">
@@ -1174,6 +1214,19 @@ export default function Alquiler({ inPopup, onClose, editRentalId, onSaved }: Pr
                     VTA
                   </button>
                 </div>
+                {/* Precio de esta prenda */}
+                <div className="relative shrink-0 w-[104px]">
+                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-text-tertiary pointer-events-none">$</span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={formatPesos(item.precio)}
+                    onChange={(e) => updateGarmentPrecio(index, e.target.value)}
+                    placeholder="0"
+                    className="w-full rounded-[8px] pl-5 pr-2 py-1.5 text-xs text-right font-semibold text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/40"
+                    style={{ background: 'var(--field-bg)', border: '1px solid var(--accent-border)' }}
+                  />
+                </div>
                 <button
                   onClick={() => removeGarment(index)}
                   className="shrink-0 hover:opacity-70 transition-opacity"
@@ -1356,21 +1409,21 @@ export default function Alquiler({ inPopup, onClose, editRentalId, onSaved }: Pr
         <h3 className="font-semibold text-text-primary text-sm">Totales</h3>
 
         <div>
-          <label className="text-xs text-text-tertiary">Total acordado</label>
-          <input
-            type="text"
-            inputMode="numeric"
-            value={formatPesos(total)}
-            onChange={handleTotalChange}
-            placeholder="50.000"
-            className="w-full rounded-[12px] px-4 py-2.5 text-sm text-text-primary mt-1 focus:outline-none focus:ring-2 focus:ring-accent/40"
+          <div className="flex items-center justify-between">
+            <label className="text-xs text-text-tertiary">Total</label>
+            <span className="text-[10px] text-text-tertiary">Suma de las prendas</span>
+          </div>
+          <div
+            className="w-full rounded-[12px] px-4 py-2.5 text-base font-bold text-text-primary mt-1"
             style={{
               background: 'rgba(255,255,255,0.65)',
               backdropFilter: 'blur(50px) saturate(200%)',
               WebkitBackdropFilter: 'blur(50px) saturate(200%)',
               border: '1px solid rgba(0,0,0,0.10)',
             }}
-          />
+          >
+            {(parseFloat(total) || 0).toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 })}
+          </div>
         </div>
 
         <div className="grid grid-cols-2 gap-3">

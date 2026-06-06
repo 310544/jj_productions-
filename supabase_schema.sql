@@ -83,7 +83,7 @@ ALTER TABLE rentals ADD COLUMN IF NOT EXISTS direccion TEXT;
 ALTER TABLE rentals ADD COLUMN IF NOT EXISTS quien_entrega TEXT;
 
 -- Rellenar códigos para registros existentes
-UPDATE rentals SET codigo = 'FAC-' || LPAD(id::TEXT, 3, '0') WHERE codigo IS NULL;
+UPDATE rentals SET codigo = 'Nº ' || LPAD(id::TEXT, 3, '0') WHERE codigo IS NULL;
 ALTER TABLE rentals ALTER COLUMN codigo SET NOT NULL;
 ALTER TABLE rentals ADD CONSTRAINT rentals_codigo_unique UNIQUE (codigo);
 
@@ -107,7 +107,7 @@ CREATE TABLE IF NOT EXISTS pagos (
 ALTER TABLE pagos ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Permitir todo en pagos" ON pagos FOR ALL TO anon USING (true) WITH CHECK (true);
 
--- 10. Secuencia y trigger para código secuencial automático (FAC-001, FAC-002...)
+-- 10. Secuencia y trigger para código secuencial automático (Nº 001, Nº 002...)
 DO $$
 DECLARE
   max_num INTEGER;
@@ -121,7 +121,7 @@ CREATE OR REPLACE FUNCTION set_rental_codigo()
 RETURNS TRIGGER AS $$
 BEGIN
   IF NEW.codigo IS NULL OR NEW.codigo = '' THEN
-    NEW.codigo := 'FAC-' || LPAD(nextval('rental_codigo_seq')::TEXT, 3, '0');
+    NEW.codigo := 'Nº ' || LPAD(nextval('rental_codigo_seq')::TEXT, 3, '0');
   END IF;
   RETURN NEW;
 END;

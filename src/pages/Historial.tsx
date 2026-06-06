@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { compartirComprobante } from '../lib/comprobante'
 import Alquiler from './Alquiler'
 import {
   IconArrowLeft, IconSearch, IconX, IconEdit,
   IconUser, IconPhone,
-  IconCalendar, IconCash, IconChevronRight,
+  IconCalendar, IconCash, IconChevronRight, IconBrandWhatsapp,
 } from '@tabler/icons-react'
 
 interface RentalSummary {
@@ -106,6 +107,36 @@ export default function Historial() {
     setViewingId(null)
     setEditingActive(false)
     setDetail(null)
+  }
+
+  const [enviandoWa, setEnviandoWa] = useState(false)
+
+  async function enviarWhatsapp() {
+    if (!detail) return
+    const { rental, items, pagos } = detail
+    const cust = getCustomer(rental)
+    setEnviandoWa(true)
+    await compartirComprobante({
+      codigo: rental.codigo,
+      cliente: cust.nombre || '',
+      cedula: rental.cedula || '',
+      telefono: cust.telefono || '',
+      vendedor: rental.vendedor || '',
+      direccion: rental.direccion,
+      quienEntrega: rental.quien_entrega,
+      prendas: items.map((i: any) => ({
+        codigo: i.garments?.codigo || '',
+        nombre: i.garments?.nombre || '',
+        tipo: i.tipo,
+        precio: i.precio || 0,
+      })),
+      pagos: (pagos || []).map((p: any) => ({ fecha: p.fecha, monto: p.monto })),
+      total: rental.monto_total || 0,
+      abonado: rental.abono || 0,
+      fechaInicio: rental.fecha_inicio,
+      fechaFin: rental.fecha_fin,
+    })
+    setEnviandoWa(false)
   }
 
   async function handleDevolucion() {
@@ -552,7 +583,19 @@ export default function Historial() {
                     )}
 
                     {/* Acciones */}
-                    <div className="flex gap-2 pt-1">
+                    <div className="space-y-2 pt-1">
+                    {cust.telefono && (
+                      <button
+                        onClick={enviarWhatsapp}
+                        disabled={enviandoWa}
+                        className="w-full py-3 rounded-[14px] text-sm font-semibold text-white transition-all hover:brightness-110 disabled:opacity-60 flex items-center justify-center gap-2"
+                        style={{ background: 'linear-gradient(135deg, #25D366 0%, #128C7E 100%)' }}
+                      >
+                        <IconBrandWhatsapp className="w-4 h-4" />
+                        {enviandoWa ? 'Generando...' : 'Enviar factura por WhatsApp'}
+                      </button>
+                    )}
+                    <div className="flex gap-2">
                       <button
                         onClick={() => setEditingActive(true)}
                         className="flex-1 py-3 rounded-[14px] text-sm font-semibold text-white transition-all hover:brightness-110 flex items-center justify-center gap-1.5"
@@ -571,6 +614,7 @@ export default function Historial() {
                           {devolviendo ? 'Devolviendo...' : 'Devolver prendas'}
                         </button>
                       )}
+                    </div>
                     </div>
                   </div>
                 </>

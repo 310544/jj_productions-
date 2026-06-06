@@ -9,6 +9,7 @@ import {
   Wallet, Receipt, Trash,
 } from '@phosphor-icons/react'
 import type { Gasto } from '../types'
+import DatePicker from '../components/DatePicker'
 
 interface DatoMes {
   mes: string
@@ -226,8 +227,8 @@ export default function Contabilidad() {
                 </linearGradient>
               </defs>
               <CartesianGrid vertical={false} stroke="var(--surface-border)" />
-              <XAxis dataKey="mes" tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }} axisLine={false} tickLine={false} />
-              <YAxis tickFormatter={formatCOP} tick={{ fontSize: 10, fill: 'var(--text-tertiary)' }} axisLine={false} tickLine={false} width={48} />
+              <XAxis dataKey="mes" tick={{ fontSize: 11, fill: 'var(--text-secondary)' }} axisLine={false} tickLine={false} />
+              <YAxis tickFormatter={formatCOP} tick={{ fontSize: 10, fill: 'var(--text-secondary)' }} axisLine={false} tickLine={false} width={48} />
               <Tooltip
                 formatter={(v: number, name: string) => [formatCOPFull(v), name === 'ingresos' ? 'Ingresos' : 'Gastos']}
                 contentStyle={{ borderRadius: '12px', border: '1px solid rgba(0,0,0,0.08)', boxShadow: '0 8px 24px rgba(0,0,0,0.10)', fontSize: 12 }}
@@ -263,13 +264,13 @@ export default function Contabilidad() {
         </div>
 
         {gastos.length === 0 ? (
-          <div className="rounded-[16px] py-12 text-center" style={{ background: 'var(--surface)', border: '1px solid rgba(0,0,0,0.07)' }}>
+          <div className="rounded-[16px] py-12 text-center" style={{ background: 'var(--surface)', border: '1px solid rgba(0,0,0,0.07)', boxShadow: '0 10px 30px rgba(28,20,8,0.10), 0 2px 6px rgba(0,0,0,0.04)' }}>
             <Receipt size={32} weight="light" className="mx-auto mb-2 opacity-25" />
             <p className="text-sm font-medium text-text-secondary">Sin gastos en {MESES_FULL[mes]}</p>
             <p className="text-xs text-text-tertiary mt-0.5">Registra tus egresos para ver la utilidad real</p>
           </div>
         ) : (
-          <div className="rounded-[16px] overflow-hidden" style={{ border: '1px solid rgba(0,0,0,0.07)' }}>
+          <div className="rounded-[16px] overflow-hidden" style={{ border: '1px solid rgba(0,0,0,0.07)', boxShadow: '0 10px 30px rgba(28,20,8,0.10), 0 2px 6px rgba(0,0,0,0.04)' }}>
             {gastos.map((g, i) => (
               <div
                 key={g.id}
@@ -313,7 +314,14 @@ function StatCard({ label, value, sub, icon, accent }: {
   return (
     <div
       className="rounded-[20px] p-6 flex flex-col gap-4"
-      style={{ background: 'var(--surface)', border: '1px solid rgba(0,0,0,0.06)', minHeight: 190, boxShadow: '0 10px 30px rgba(28,20,8,0.10), 0 2px 6px rgba(0,0,0,0.04)' }}
+      style={{
+        background: `linear-gradient(150deg, ${accent}26 0%, transparent 55%), var(--glass-card-bg)`,
+        backdropFilter: 'blur(16px) saturate(1.4)',
+        WebkitBackdropFilter: 'blur(16px) saturate(1.4)',
+        border: `1px solid ${accent}33`,
+        minHeight: 190,
+        boxShadow: `0 8px 28px ${accent}1F, inset 0 1px 0 var(--glass-card-highlight)`,
+      }}
     >
       <span
         className="w-12 h-12 rounded-full flex items-center justify-center"
@@ -334,20 +342,19 @@ export function GastoModal({ open, onClose, onSaved, defaultFecha }: {
   open: boolean; onClose: () => void; onSaved: () => void; defaultFecha: string
 }) {
   const [concepto, setConcepto] = useState('')
-  const [categoria, setCategoria] = useState('')
   const [monto, setMonto] = useState('')
   const [fecha, setFecha] = useState(defaultFecha)
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
-    if (open) { setConcepto(''); setCategoria(''); setMonto(''); setFecha(new Date().toISOString().split('T')[0]) }
+    if (open) { setConcepto(''); setMonto(''); setFecha(new Date().toISOString().split('T')[0]) }
   }, [open, defaultFecha])
 
   async function guardar() {
     const m = Number(monto)
     if (!concepto.trim() || !m || m <= 0) return
     setSaving(true)
-    await supabase.from('gastos').insert({ concepto: concepto.trim(), categoria: categoria.trim() || null, monto: m, fecha })
+    await supabase.from('gastos').insert({ concepto: concepto.trim(), categoria: null, monto: m, fecha })
     setSaving(false)
     onSaved()
   }
@@ -390,14 +397,10 @@ export function GastoModal({ open, onClose, onSaved, defaultFecha }: {
                 </div>
                 <div>
                   <label className="text-xs font-semibold text-text-secondary">Fecha</label>
-                  <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)}
-                    className="w-full mt-1 px-4 py-2.5 rounded-[12px] text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40" style={inputStyle} />
+                  <div className="mt-1">
+                    <DatePicker value={fecha} onChange={setFecha} />
+                  </div>
                 </div>
-              </div>
-              <div>
-                <label className="text-xs font-semibold text-text-secondary">Categoría <span className="text-text-tertiary font-normal">(opcional)</span></label>
-                <input value={categoria} onChange={(e) => setCategoria(e.target.value)} placeholder="Ej: Mantenimiento, servicios..."
-                  className="w-full mt-1 px-4 py-2.5 rounded-[12px] text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/40" style={inputStyle} />
               </div>
             </div>
 

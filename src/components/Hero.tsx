@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, type CSSProperties } from 'react'
-import { IconSearch, IconBell, IconX, IconAlertTriangle, IconCalendarCheck } from '@tabler/icons-react'
+import { IconSearch, IconBell, IconX, IconAlertTriangle, IconCalendarCheck, IconCheck } from '@tabler/icons-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { supabase } from '../lib/supabase'
 import { formatDate } from '../lib/formatDate'
@@ -9,12 +9,15 @@ import AgregarPrenda from '../pages/AgregarPrenda'
 type Popup = 'alquiler' | 'agregar' | null
 
 interface Notification {
+  key: string
   codigo: string
   nombre: string
   fecha_fin: string
   vencido: boolean
   diasRetraso: number
 }
+
+const READ_STORAGE_KEY = 'notif_leidas'
 
 interface HeroProps {
   searchValue: string
@@ -26,6 +29,28 @@ export default function Hero({ searchValue, onSearchChange }: HeroProps) {
   const [popup, setPopup] = useState<Popup>(null)
   const popupRef = useRef<HTMLDivElement>(null)
   const [notifications, setNotifications] = useState<Notification[]>([])
+  const [readKeys, setReadKeys] = useState<Set<string>>(() => {
+    try { return new Set<string>(JSON.parse(localStorage.getItem(READ_STORAGE_KEY) || '[]')) }
+    catch { return new Set<string>() }
+  })
+
+  function persistReadKeys(next: Set<string>) {
+    setReadKeys(next)
+    localStorage.setItem(READ_STORAGE_KEY, JSON.stringify([...next]))
+  }
+
+  function markRead(key: string) {
+    if (readKeys.has(key)) return
+    const next = new Set(readKeys)
+    next.add(key)
+    persistReadKeys(next)
+  }
+
+  // Consultar al cargar la app (para que el puntico rojo aparezca sin abrir las notis)
+  useEffect(() => {
+    fetchNotifications()
+  }, [])
+
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (popupRef.current && !popupRef.current.contains(e.target as Node)) {
@@ -78,11 +103,13 @@ export default function Hero({ searchValue, onSearchChange }: HeroProps) {
           seen.add(key)
           const fechaFinDate = new Date(rental.fecha_fin + 'T00:00:00')
           const dias = Math.floor((hoyDate.getTime() - fechaFinDate.getTime()) / (1000 * 60 * 60 * 24))
+          const vencido = rental.fecha_fin < hoy
           notifs.push({
+            key: `${g.codigo}-${rental.fecha_fin}-${vencido ? 'v' : 'h'}`,
             codigo: g.codigo,
             nombre: g.nombre,
             fecha_fin: rental.fecha_fin,
-            vencido: rental.fecha_fin < hoy,
+            vencido,
             diasRetraso: dias,
           })
         }
@@ -93,6 +120,8 @@ export default function Hero({ searchValue, onSearchChange }: HeroProps) {
   }
 
   const hasNotifications = notifications.length > 0
+  const unreadCount = notifications.filter((n) => !readKeys.has(n.key)).length
+  const hasUnread = unreadCount > 0
 
   const searchStyle: CSSProperties = {
     background: 'var(--surface)',
@@ -152,15 +181,17 @@ export default function Hero({ searchValue, onSearchChange }: HeroProps) {
               aria-label="Notificaciones"
             >
               <IconBell
-                className="w-5 h-5 md:w-6 md:h-6"
+                className={`w-5 h-5 md:w-6 md:h-6 ${hasUnread ? 'bell-ring' : ''}`}
                 stroke={1.5}
-                style={{ color: 'var(--text-secondary)' }}
+                style={{ color: hasUnread ? 'var(--danger)' : 'var(--text-secondary)' }}
               />
-              {hasNotifications && (
+              {hasUnread && (
                 <span
-                  className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white"
+                  className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full border-2 border-white notif-dot text-[10px] font-bold text-white"
                   style={{ background: 'var(--danger)' }}
-                />
+                >
+                  {unreadCount}
+                </span>
               )}
             </button>
 
@@ -201,39 +232,44 @@ export default function Hero({ searchValue, onSearchChange }: HeroProps) {
 
                 {hasNotifications && (
                   <div className="space-y-2">
-                    {notifications.map((n, i) => (
-                      <div
-                        key={i}
-                        className="flex items-start gap-3 p-3 rounded-[12px]"
-                        style={{
-                          background: n.vencido
-                            ? 'var(--danger-bg)'
-                            : 'rgba(249,115,22,0.06)',
-                          border: n.vencido
-                            ? '1px solid var(--danger-border)'
-                            : '1px solid rgba(249,115,22,0.15)',
-                        }}
-                      >
-                        {n.vencido ? (
-                          <IconAlertTriangle className="w-5 h-5 shrink-0 mt-0.5" style={{ color: 'var(--danger)' }} />
-                        ) : (
-                          <IconCalendarCheck className="w-5 h-5 shrink-0 mt-0.5" style={{ color: '#F97316' }} />
-                        )}
-                        <div className="min-w-0">
-                          <p className="text-sm font-semibold text-text-primary">
-                            {n.codigo} <span className="font-normal text-text-tertiary">{n.nombre}</span>
-                          </p>
-                          <p
-                            className="text-xs font-medium mt-0.5"
-                            style={{ color: n.vencido ? 'var(--danger)' : '#F97316' }}
-                          >
-                            {n.vencido
-                              ? `Debio devolverse hace ${n.diasRetraso} dia${n.diasRetraso > 1 ? 's' : ''} (${formatDate(n.fecha_fin)})`
-                              : `Se devuelve hoy`}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
+                    {notifications.map((n) => {
+                      const leida = readKeys.has(n.key)
+                      return (
+                        <button
+                          key={n.key}
+                          onClick={() => markRead(n.key)}
+                          className="w-full text-left flex items-start gap-3 p-3 rounded-[12px] transition-all"
+                          style={{
+                            background: leida ? 'var(--surface-2)' : 'rgba(37,99,235,0.08)',
+                            border: leida ? '1px solid var(--surface-border)' : '1px solid rgba(37,99,235,0.25)',
+                            opacity: leida ? 0.65 : 1,
+                          }}
+                        >
+                          {leida ? (
+                            <IconCheck className="w-5 h-5 shrink-0 mt-0.5" style={{ color: 'var(--text-tertiary)' }} />
+                          ) : n.vencido ? (
+                            <IconAlertTriangle className="w-5 h-5 shrink-0 mt-0.5" style={{ color: '#2563EB' }} />
+                          ) : (
+                            <IconCalendarCheck className="w-5 h-5 shrink-0 mt-0.5" style={{ color: '#2563EB' }} />
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-semibold text-text-primary">
+                              {n.codigo} <span className="font-normal text-text-tertiary">{n.nombre}</span>
+                            </p>
+                            <p
+                              className="text-xs font-medium mt-0.5"
+                              style={{ color: leida ? 'var(--text-tertiary)' : '#2563EB' }}
+                            >
+                              {leida
+                                ? 'Leída'
+                                : n.vencido
+                                  ? `Debio devolverse hace ${n.diasRetraso} dia${n.diasRetraso > 1 ? 's' : ''} (${formatDate(n.fecha_fin)})`
+                                  : `Se devuelve hoy`}
+                            </p>
+                          </div>
+                        </button>
+                      )
+                    })}
                   </div>
                 )}
               </motion.div>

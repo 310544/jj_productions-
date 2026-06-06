@@ -11,13 +11,17 @@
   --surface: #ffffff;
   --surface-2: #F8F6F1;
   --surface-border: rgba(0, 0, 0, 0.06);
-  --main-bg: #F8F9FB;
+  --main-bg: #EFEBE4;
 
   /* Glass / cards */
   --glass-bg: #F8F6F1;
   --glass-border: rgba(0, 0, 0, 0.06);
   --glass-blur: blur(12px);
   --glass-strong: #EDEAE3;
+
+  /* Glass burbuja — tarjetas semitransparentes (Contabilidad) */
+  --glass-card-bg: rgba(255, 255, 255, 0.45);
+  --glass-card-highlight: rgba(255, 255, 255, 0.65);
 
   /* Fields */
   --field-bg: #EDEAE3;
@@ -70,6 +74,9 @@
   --glass-bg: #1B1711;
   --glass-border: rgba(255, 255, 255, 0.08);
   --glass-strong: #2A241B;
+
+  --glass-card-bg: rgba(42, 35, 26, 0.40);
+  --glass-card-highlight: rgba(255, 255, 255, 0.10);
 
   --field-bg: #221D16;
   --field-border: rgba(255, 255, 255, 0.06);
@@ -192,4 +199,24 @@ body {
 .gold-line {
   height: 1px;
   background: linear-gradient(90deg, transparent, rgba(201,168,76,0.30), transparent);
+}
+
+/* Campana que vibra cuando hay notificaciones */
+@keyframes bell-ring {
+  0%, 55%, 100% { transform: rotate(0deg); }
+  5%, 15%, 25%, 35%, 45% { transform: rotate(13deg); }
+  10%, 20%, 30%, 40%, 50% { transform: rotate(-13deg); }
+}
+.bell-ring {
+  animation: bell-ring 2.4s ease-in-out infinite;
+  transform-origin: top center;
+}
+
+/* Pulso del puntico rojo de notificaciones */
+@keyframes notif-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.55); }
+  70% { box-shadow: 0 0 0 5px rgba(220, 38, 38, 0); }
+}
+.notif-dot {
+  animation: notif-pulse 1.8s ease-out infinite;
 }

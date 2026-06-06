@@ -78,7 +78,7 @@ export default function GarmentCard({ prenda, onSelect }: Props) {
 
         {/* Code chip — top right */}
         <span
-          className="absolute top-3 right-3 px-3 py-1 rounded-full text-xs font-extrabold tracking-wider"
+          className="absolute top-3 right-3 px-3 py-1.5 rounded-full text-sm font-extrabold tracking-wider"
           style={{
             background: 'rgba(17,17,17,0.78)',
             backdropFilter: 'blur(10px)',
@@ -91,8 +91,8 @@ export default function GarmentCard({ prenda, onSelect }: Props) {
           {prenda.codigo}
         </span>
 
-        {/* Ocupado dates at bottom of image */}
-        {ocupado && fechas.length > 0 && (
+        {/* Dates at bottom of image */}
+        {fechas.length > 0 && (
           <div className="absolute bottom-2.5 inset-x-2.5 flex flex-col gap-1 items-start">
             {fechas.map((f, i) => (
               <span

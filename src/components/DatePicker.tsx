@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { IconCalendar, IconChevronLeft, IconChevronRight } from '@tabler/icons-react'
 import { formatDate } from '../lib/formatDate'
@@ -19,12 +20,13 @@ export default function DatePicker({ value, onChange, label, placeholder = 'Sele
   const [open, setOpen] = useState(false)
   const [viewDate, setViewDate] = useState(() => value ? new Date(value + 'T00:00:00') : new Date())
   const ref = useRef<HTMLDivElement>(null)
+  const popupRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false)
-      }
+      const target = e.target as Node
+      if (ref.current?.contains(target) || popupRef.current?.contains(target)) return
+      setOpen(false)
     }
     if (open) document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
@@ -80,14 +82,16 @@ export default function DatePicker({ value, onChange, label, placeholder = 'Sele
         </span>
       </button>
 
-      <AnimatePresence>
+      {createPortal(
+        <AnimatePresence>
         {open && (
           <motion.div
+            ref={popupRef}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
-            className="fixed inset-0 z-50 flex items-center justify-center"
+            className="fixed inset-0 z-[60] flex items-center justify-center"
             style={{ background: 'rgba(0,0,0,0.3)' }}
             onClick={() => setOpen(false)}
           >
@@ -171,7 +175,9 @@ export default function DatePicker({ value, onChange, label, placeholder = 'Sele
             </motion.div>
           </motion.div>
         )}
-      </AnimatePresence>
+        </AnimatePresence>,
+        document.body
+      )}
     </div>
   )
 }
