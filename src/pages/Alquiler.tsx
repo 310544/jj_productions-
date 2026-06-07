@@ -4,11 +4,11 @@ import { formatDateRange } from '../lib/formatDate'
 import DatePicker from '../components/DatePicker'
 import type { Prenda, Vendedor, TipoItem } from '../types'
 import {
-  IconUser, IconPhone, IconCalendar, IconX, IconPlus,
-  IconSearch, IconBrandWhatsapp, IconHanger, IconArrowLeft, IconCheck,
-  IconAlertTriangle, IconId, IconMapPin, IconHandStop,
-  IconCash, IconTrash, IconReceipt, IconChevronDown,
-} from '@tabler/icons-react'
+  User, Phone, CalendarBlank, X, Plus,
+  MagnifyingGlass, WhatsappLogo, CoatHanger, ArrowLeft, Check,
+  Warning, IdentificationCard, MapPin, HandPalm,
+  Money, Trash, Receipt, CaretDown,
+} from '@phosphor-icons/react'
 import { useNavigate } from 'react-router-dom'
 
 const VENDEDORES: Vendedor[] = ['Jhoan Becerra', 'Karen', 'Barbara']
@@ -1037,7 +1037,7 @@ export default function Alquiler({ inPopup, onClose, editRentalId, onSaved }: Pr
             }}
             aria-label="Volver"
           >
-            <IconArrowLeft className="w-5 h-5" aria-hidden="true" />
+            <ArrowLeft className="w-5 h-5" aria-hidden="true" />
           </button>
           <h2 className="text-lg font-bold text-text-primary">Factura / Alquiler</h2>
         </div>
@@ -1053,7 +1053,7 @@ export default function Alquiler({ inPopup, onClose, editRentalId, onSaved }: Pr
             Nombre del cliente
           </label>
           <div className="relative">
-            <IconUser
+            <User
               className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-text-secondary"
               aria-hidden="true"
             />
@@ -1069,7 +1069,7 @@ export default function Alquiler({ inPopup, onClose, editRentalId, onSaved }: Pr
           </div>
           {nombreDuplicado && !editRentalId && (
             <p className="mt-1.5 text-xs flex items-center gap-1.5" style={{ color: '#B7791F' }}>
-              <IconAlertTriangle className="w-3.5 h-3.5 shrink-0" />
+              <Warning className="w-3.5 h-3.5 shrink-0" />
               Ya existe un cliente llamado «{nombreDuplicado}». Verifica que no sea un duplicado.
             </p>
           )}
@@ -1081,7 +1081,7 @@ export default function Alquiler({ inPopup, onClose, editRentalId, onSaved }: Pr
               Cedula
             </label>
             <div className="relative">
-              <IconId
+              <IdentificationCard
                 className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-text-secondary"
                 aria-hidden="true"
               />
@@ -1100,7 +1100,7 @@ export default function Alquiler({ inPopup, onClose, editRentalId, onSaved }: Pr
               Telefono
             </label>
             <div className="relative">
-              <IconPhone
+              <Phone
                 className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-text-secondary"
                 aria-hidden="true"
               />
@@ -1121,7 +1121,7 @@ export default function Alquiler({ inPopup, onClose, editRentalId, onSaved }: Pr
             Direccion
           </label>
           <div className="relative">
-            <IconMapPin
+            <MapPin
               className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-text-secondary"
               aria-hidden="true"
             />
@@ -1144,7 +1144,7 @@ export default function Alquiler({ inPopup, onClose, editRentalId, onSaved }: Pr
             Vendedor
           </label>
           <div className="relative">
-            <IconReceipt
+            <Receipt
               className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-text-secondary"
               aria-hidden="true"
             />
@@ -1158,7 +1158,7 @@ export default function Alquiler({ inPopup, onClose, editRentalId, onSaved }: Pr
               }}
             >
               {vendedor || 'Seleccionar'}
-              <IconChevronDown className="w-5 h-5 shrink-0" style={{ color: 'var(--text-secondary)' }} />
+              <CaretDown className="w-5 h-5 shrink-0" style={{ color: 'var(--text-secondary)' }} />
             </button>
             {openVendedor && (
               <div
@@ -1193,7 +1193,7 @@ export default function Alquiler({ inPopup, onClose, editRentalId, onSaved }: Pr
             Quien entrega
           </label>
           <div className="relative">
-            <IconHandStop
+            <HandPalm
               className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-text-secondary"
               aria-hidden="true"
             />
@@ -1207,7 +1207,7 @@ export default function Alquiler({ inPopup, onClose, editRentalId, onSaved }: Pr
               }}
             >
               {quienEntrega || 'Opcional'}
-              <IconChevronDown className="w-5 h-5 shrink-0" style={{ color: 'var(--text-secondary)' }} />
+              <CaretDown className="w-5 h-5 shrink-0" style={{ color: 'var(--text-secondary)' }} />
             </button>
             {openEntrega && (
               <div
@@ -1257,7 +1257,7 @@ export default function Alquiler({ inPopup, onClose, editRentalId, onSaved }: Pr
                   border: '1px solid var(--glass-border)',
                 }}
               >
-                <IconHanger className="w-4 h-4 shrink-0" style={{ color: 'var(--accent)' }} />
+                <CoatHanger className="w-4 h-4 shrink-0" style={{ color: 'var(--accent)' }} />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-text-primary truncate">
                     {item.prenda.codigo}
@@ -1340,7 +1340,7 @@ export default function Alquiler({ inPopup, onClose, editRentalId, onSaved }: Pr
                   className="shrink-0 hover:opacity-70 transition-opacity"
                   aria-label="Quitar prenda"
                 >
-                  <IconX className="w-4 h-4" style={{ color: 'var(--text-secondary)' }} />
+                  <X className="w-4 h-4" style={{ color: 'var(--text-secondary)' }} />
                 </button>
               </div>
             ))}
@@ -1363,7 +1363,7 @@ export default function Alquiler({ inPopup, onClose, editRentalId, onSaved }: Pr
               autoFocus
               onBlur={() => setTimeout(() => setShowSearch(false), 200)}
             />
-            <IconSearch
+            <MagnifyingGlass
               className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary"
               aria-hidden="true"
             />
@@ -1398,7 +1398,7 @@ export default function Alquiler({ inPopup, onClose, editRentalId, onSaved }: Pr
               color: 'var(--accent)',
             }}
           >
-            <IconPlus className="w-4 h-4" aria-hidden="true" />
+            <Plus className="w-4 h-4" aria-hidden="true" />
             Agregar por codigo
           </button>
         )}
@@ -1407,7 +1407,7 @@ export default function Alquiler({ inPopup, onClose, editRentalId, onSaved }: Pr
       {/* Fechas */}
       <div>
         <label className="flex items-center gap-1.5 text-sm font-medium text-text-secondary mb-2">
-          <IconCalendar className="w-4 h-4" aria-hidden="true" />
+          <CalendarBlank className="w-4 h-4" aria-hidden="true" />
           Fechas
         </label>
         <div className="grid grid-cols-2 gap-4">
@@ -1444,7 +1444,7 @@ export default function Alquiler({ inPopup, onClose, editRentalId, onSaved }: Pr
             className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all hover:brightness-110 text-white"
             style={{ background: 'linear-gradient(135deg, #D4AF37 0%, #A8823A 100%)', boxShadow: '0 3px 10px rgba(184,134,11,0.28)' }}
           >
-            <IconCash className="w-3.5 h-3.5" />
+            <Money className="w-3.5 h-3.5" />
             Agregar abono
           </button>
         </div>
@@ -1468,7 +1468,7 @@ export default function Alquiler({ inPopup, onClose, editRentalId, onSaved }: Pr
                   />
                 </div>
                 <div className="relative flex-1">
-                  <IconCash
+                  <Money
                     className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary"
                     aria-hidden="true"
                   />
@@ -1487,7 +1487,7 @@ export default function Alquiler({ inPopup, onClose, editRentalId, onSaved }: Pr
                   className="shrink-0 hover:opacity-70 transition-opacity"
                   aria-label="Quitar abono"
                 >
-                  <IconTrash className="w-4 h-4" style={{ color: 'var(--danger)' }} />
+                  <Trash className="w-4 h-4" style={{ color: 'var(--danger)' }} />
                 </button>
               </div>
             ))}
@@ -1606,7 +1606,7 @@ export default function Alquiler({ inPopup, onClose, editRentalId, onSaved }: Pr
                 border: '1px solid rgba(255,60,60,0.3)',
               }}
             >
-              <IconAlertTriangle className="w-6 h-6" style={{ color: '#ff3b3b' }} aria-hidden="true" />
+              <Warning className="w-6 h-6" style={{ color: '#ff3b3b' }} aria-hidden="true" />
             </div>
             <p className="text-sm font-medium" style={{ color: '#ff3b3b' }}>Conflicto de fechas</p>
             <p className="text-xs text-text-secondary whitespace-pre-line">{conflictMessage}</p>
@@ -1650,7 +1650,7 @@ export default function Alquiler({ inPopup, onClose, editRentalId, onSaved }: Pr
                   border: '1px solid var(--success-border)',
                 }}
               >
-                <IconCheck className="w-7 h-7" style={{ color: 'var(--success)' }} aria-hidden="true" />
+                <Check className="w-7 h-7" style={{ color: 'var(--success)' }} aria-hidden="true" />
               </div>
               <h3 className="text-lg font-bold text-text-primary">{editRentalId ? 'Factura actualizada' : 'Factura registrada'}</h3>
               {savedCodigo && (
@@ -1667,7 +1667,7 @@ export default function Alquiler({ inPopup, onClose, editRentalId, onSaved }: Pr
               className="w-full py-3.5 text-white font-semibold rounded-[14px] transition-all hover:brightness-110 flex items-center justify-center gap-2"
               style={{ background: '#25D366' }}
             >
-              <IconBrandWhatsapp className="w-5 h-5" aria-hidden="true" />
+              <WhatsappLogo className="w-5 h-5" aria-hidden="true" />
               Enviar comprobante a WhatsApp
             </button>
 

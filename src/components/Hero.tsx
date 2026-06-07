@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, type CSSProperties } from 'react'
-import { IconSearch, IconBell, IconX, IconAlertTriangle, IconCalendarCheck, IconCheck } from '@tabler/icons-react'
+import { MagnifyingGlass, Bell, X, Warning, CalendarCheck, Check } from '@phosphor-icons/react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { supabase } from '../lib/supabase'
 import { formatDate } from '../lib/formatDate'
@@ -105,7 +105,10 @@ export default function Hero({ searchValue, onSearchChange }: HeroProps) {
           const dias = Math.floor((hoyDate.getTime() - fechaFinDate.getTime()) / (1000 * 60 * 60 * 24))
           const vencido = rental.fecha_fin < hoy
           notifs.push({
-            key: `${g.codigo}-${rental.fecha_fin}-${vencido ? 'v' : 'h'}`,
+            // Llave estable: identifica la devolución por prenda + fecha, sin
+            // el estado vencido/hoy (que cambia de un día a otro). Así, lo que
+            // marcaste como leído sigue leído aunque la prenda pase a vencida.
+            key: `${g.codigo}-${rental.fecha_fin}`,
             codigo: g.codigo,
             nombre: g.nombre,
             fecha_fin: rental.fecha_fin,
@@ -154,7 +157,7 @@ export default function Hero({ searchValue, onSearchChange }: HeroProps) {
         {/* Busqueda + Notificaciones */}
         <div className="flex items-center gap-3">
           <div className="relative flex-1">
-            <IconSearch
+            <MagnifyingGlass
               className="absolute left-4 md:left-5 top-1/2 -translate-y-1/2 w-5 h-5 md:w-6 md:h-6 pointer-events-none z-10"
               style={{ color: '#B8860B' }}
               aria-hidden="true"
@@ -180,9 +183,8 @@ export default function Hero({ searchValue, onSearchChange }: HeroProps) {
               style={bellStyle}
               aria-label="Notificaciones"
             >
-              <IconBell
+              <Bell
                 className={`w-5 h-5 md:w-6 md:h-6 ${hasUnread ? 'bell-ring' : ''}`}
-                stroke={1.5}
                 style={{ color: hasUnread ? 'var(--danger)' : 'var(--text-secondary)' }}
               />
               {hasUnread && (
@@ -202,12 +204,11 @@ export default function Hero({ searchValue, onSearchChange }: HeroProps) {
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.92, y: -8 }}
                 transition={{ duration: 0.2, ease: 'easeOut' }}
-                className="absolute right-0 top-full mt-2 w-80 rounded-[16px] p-5 z-30 max-h-80 overflow-y-auto"
+                className="absolute right-0 top-full mt-2 w-80 rounded-[16px] p-5 z-30"
                 style={{
                   background: 'var(--surface)',
                   border: '1px solid var(--surface-border)',
                   boxShadow: '0 16px 48px rgba(0,0,0,0.10)',
-                  scrollbarWidth: 'none',
                 }}
               >
                 <div className="flex items-center justify-between mb-3">
@@ -218,7 +219,7 @@ export default function Hero({ searchValue, onSearchChange }: HeroProps) {
                     style={{ color: 'var(--text-secondary)' }}
                     aria-label="Cerrar"
                   >
-                    <IconX className="w-3.5 h-3.5" />
+                    <X className="w-3.5 h-3.5" />
                   </button>
                 </div>
 
@@ -231,7 +232,10 @@ export default function Hero({ searchValue, onSearchChange }: HeroProps) {
                 )}
 
                 {hasNotifications && (
-                  <div className="space-y-2">
+                  <div
+                    className="space-y-2 overflow-y-auto pr-1"
+                    style={{ maxHeight: '25rem', scrollbarWidth: 'none' }}
+                  >
                     {notifications.map((n) => {
                       const leida = readKeys.has(n.key)
                       return (
@@ -246,11 +250,11 @@ export default function Hero({ searchValue, onSearchChange }: HeroProps) {
                           }}
                         >
                           {leida ? (
-                            <IconCheck className="w-5 h-5 shrink-0 mt-0.5" style={{ color: 'var(--text-tertiary)' }} />
+                            <Check className="w-5 h-5 shrink-0 mt-0.5" style={{ color: 'var(--text-tertiary)' }} />
                           ) : n.vencido ? (
-                            <IconAlertTriangle className="w-5 h-5 shrink-0 mt-0.5" style={{ color: '#2563EB' }} />
+                            <Warning className="w-5 h-5 shrink-0 mt-0.5" style={{ color: '#2563EB' }} />
                           ) : (
-                            <IconCalendarCheck className="w-5 h-5 shrink-0 mt-0.5" style={{ color: '#2563EB' }} />
+                            <CalendarCheck className="w-5 h-5 shrink-0 mt-0.5" style={{ color: '#2563EB' }} />
                           )}
                           <div className="min-w-0 flex-1">
                             <p className="text-sm font-semibold text-text-primary">
@@ -309,7 +313,7 @@ export default function Hero({ searchValue, onSearchChange }: HeroProps) {
               }}
               aria-label="Cerrar"
             >
-              <IconX className="w-4 h-4" />
+              <X className="w-4 h-4" />
             </button>
             <div
               className="w-full max-h-[90vh] overflow-y-auto rounded-[24px] px-4 pt-5 pb-6 space-y-4"
@@ -358,7 +362,7 @@ export default function Hero({ searchValue, onSearchChange }: HeroProps) {
               }}
               aria-label="Cerrar"
             >
-              <IconX className="w-4 h-4" />
+              <X className="w-4 h-4" />
             </button>
             <div
               className="w-full max-h-[90vh] overflow-y-auto rounded-[24px] px-4 pt-5 pb-6 space-y-4"

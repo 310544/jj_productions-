@@ -4,9 +4,9 @@ import { supabase } from '../lib/supabase'
 import { formatDateShort } from '../lib/formatDate'
 import type { Prenda, Categoria } from '../types'
 import {
-  IconX, IconUser, IconPhone, IconCalendar,
-  IconTrash, IconArrowBack, IconEdit, IconCheck, IconUpload, IconHanger,
-} from '@tabler/icons-react'
+  X, User, Phone, CalendarBlank,
+  Trash, ArrowUUpLeft, PencilSimple, Check, UploadSimple, CoatHanger,
+} from '@phosphor-icons/react'
 
 const CATEGORIAS: Categoria[] = [
   'Hombre', 'Mujer', 'Niño', 'Niña', 'Novias',
@@ -281,7 +281,7 @@ export default function GarmentModal({ prenda: initialPrenda, onClose, onDelete 
             }}
             aria-label={editing ? 'Cancelar edicion' : 'Cerrar'}
           >
-            <IconX className="w-5 h-5" />
+            <X className="w-5 h-5" />
           </button>
           <span
             className="px-3 py-1 rounded-full text-xs font-semibold"
@@ -316,7 +316,7 @@ export default function GarmentModal({ prenda: initialPrenda, onClose, onDelete 
               className="absolute inset-0 flex flex-col items-center justify-center gap-2 transition-all"
               style={{ background: 'rgba(0,0,0,0.35)' }}
             >
-              <IconUpload className="w-8 h-8 text-white" />
+              <UploadSimple className="w-8 h-8 text-white" />
               <span className="text-sm font-medium text-white">Cambiar foto</span>
             </button>
           )}
@@ -410,7 +410,7 @@ export default function GarmentModal({ prenda: initialPrenda, onClose, onDelete 
                 border: '1px solid var(--accent-border)',
               }}
             >
-              <IconHanger className="w-6 h-6" style={{ color: 'var(--accent)' }} />
+              <CoatHanger className="w-6 h-6" style={{ color: 'var(--accent)' }} />
             </div>
             <p className="text-text-secondary font-medium">Sin alquileres registrados</p>
             <p className="text-text-tertiary text-sm mt-1">Lista para alquilar</p>
@@ -449,15 +449,15 @@ export default function GarmentModal({ prenda: initialPrenda, onClose, onDelete 
 
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <IconUser className="w-4 h-4 text-text-secondary shrink-0" aria-hidden="true" />
+                  <User className="w-4 h-4 text-text-secondary shrink-0" aria-hidden="true" />
                   <p className="text-sm font-medium text-text-primary">{r.customer_name}</p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <IconPhone className="w-4 h-4 text-text-secondary shrink-0" aria-hidden="true" />
+                  <Phone className="w-4 h-4 text-text-secondary shrink-0" aria-hidden="true" />
                   <p className="text-sm text-text-primary">{r.customer_phone}</p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <IconCalendar className="w-4 h-4 text-text-secondary shrink-0" aria-hidden="true" />
+                  <CalendarBlank className="w-4 h-4 text-text-secondary shrink-0" aria-hidden="true" />
                   <div className="flex gap-2 text-sm">
                     <span className="text-text-primary">
                       {formatDateShort(r.fecha_inicio)}
@@ -481,7 +481,7 @@ export default function GarmentModal({ prenda: initialPrenda, onClose, onDelete 
                     background: 'var(--success-bg)',
                   }}
                 >
-                  <IconArrowBack className="w-4 h-4" aria-hidden="true" />
+                  <ArrowUUpLeft className="w-4 h-4" aria-hidden="true" />
                   {returningId === r.rental_id ? 'Devolviendo...' : 'Registrar devolucion'}
                 </button>
               )}
@@ -503,7 +503,7 @@ export default function GarmentModal({ prenda: initialPrenda, onClose, onDelete 
               className="w-full py-3 font-semibold rounded-[14px] transition-all hover:brightness-110 disabled:opacity-50 flex items-center justify-center gap-2 text-white"
               style={{ background: 'var(--btn-primary)' }}
             >
-              <IconCheck className="w-5 h-5" aria-hidden="true" />
+              <Check className="w-5 h-5" aria-hidden="true" />
               {saving ? 'Guardando...' : 'Guardar cambios'}
             </button>
             <button
@@ -516,7 +516,7 @@ export default function GarmentModal({ prenda: initialPrenda, onClose, onDelete 
                 background: 'var(--danger-bg)',
               }}
             >
-              <IconTrash className="w-5 h-5" aria-hidden="true" />
+              <Trash className="w-5 h-5" aria-hidden="true" />
               {deleting ? 'Eliminando...' : 'Eliminar prenda'}
             </button>
           </>
@@ -526,7 +526,7 @@ export default function GarmentModal({ prenda: initialPrenda, onClose, onDelete 
             className="w-full py-3 font-semibold rounded-[14px] transition-all hover:brightness-110 flex items-center justify-center gap-2 text-white"
             style={{ background: 'var(--btn-primary)' }}
           >
-            <IconEdit className="w-5 h-5" aria-hidden="true" />
+            <PencilSimple className="w-5 h-5" aria-hidden="true" />
             Editar prenda
           </button>
         )}

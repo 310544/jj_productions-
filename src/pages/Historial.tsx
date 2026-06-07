@@ -3,10 +3,10 @@ import { supabase } from '../lib/supabase'
 import { compartirComprobante } from '../lib/comprobante'
 import Alquiler from './Alquiler'
 import {
-  IconArrowLeft, IconSearch, IconX, IconEdit,
-  IconUser, IconPhone,
-  IconCalendar, IconCash, IconChevronRight, IconBrandWhatsapp,
-} from '@tabler/icons-react'
+  ArrowLeft, MagnifyingGlass, X, PencilSimple,
+  User, Phone,
+  CalendarBlank, Money, CaretRight, WhatsappLogo,
+} from '@phosphor-icons/react'
 
 interface RentalSummary {
   id: number
@@ -217,7 +217,7 @@ export default function Historial() {
             }}
             aria-label="Volver al historial"
           >
-            <IconArrowLeft className="w-5 h-5" />
+            <ArrowLeft className="w-5 h-5" />
           </button>
           <h2 className="text-lg font-bold text-text-primary">Editar factura</h2>
         </div>
@@ -271,7 +271,7 @@ export default function Historial() {
 
         {/* Buscador */}
         <div className="relative flex-1">
-          <IconSearch
+          <MagnifyingGlass
             className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5"
             style={{ color: '#B8860B' }}
             aria-hidden="true"
@@ -294,7 +294,7 @@ export default function Historial() {
               className="absolute right-3 top-1/2 -translate-y-1/2 hover:opacity-70"
               aria-label="Limpiar busqueda"
             >
-              <IconX className="w-4 h-4" style={{ color: 'var(--text-secondary)' }} />
+              <X className="w-4 h-4" style={{ color: 'var(--text-secondary)' }} />
             </button>
           )}
         </div>
@@ -372,7 +372,7 @@ export default function Historial() {
                     </p>
                   </div>
 
-                  <IconChevronRight
+                  <CaretRight
                     className="w-4 h-4 shrink-0"
                     style={{ color: 'var(--text-tertiary)' }}
                     aria-hidden="true"
@@ -388,7 +388,7 @@ export default function Historial() {
                   }}
                 >
                   <div className="flex items-center gap-1.5 text-xs text-text-secondary">
-                    <IconCalendar className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--text-tertiary)' }} />
+                    <CalendarBlank className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--text-tertiary)' }} />
                     <span>{r.fecha_inicio} → {r.fecha_fin}</span>
                     {r.vendedor && (
                       <>
@@ -460,7 +460,7 @@ export default function Historial() {
                       style={{ background: 'rgba(255,255,255,0.12)' }}
                       aria-label="Cerrar"
                     >
-                      <IconX className="w-4 h-4" style={{ color: '#fff' }} />
+                      <X className="w-4 h-4" style={{ color: '#fff' }} />
                     </button>
                     <p className="text-[11px] font-medium tracking-widest uppercase" style={{ color: '#E8C766' }}>
                       Factura
@@ -480,17 +480,17 @@ export default function Historial() {
                     {/* Cliente */}
                     <div className="space-y-2">
                       <div className="flex items-center gap-2.5 text-sm">
-                        <IconUser className="w-4 h-4 text-text-secondary shrink-0" />
+                        <User className="w-4 h-4 text-text-secondary shrink-0" />
                         <span className="font-medium text-text-primary">{cust.nombre}</span>
                       </div>
                       {cust.telefono && (
                         <div className="flex items-center gap-2.5 text-sm">
-                          <IconPhone className="w-4 h-4 text-text-secondary shrink-0" />
+                          <Phone className="w-4 h-4 text-text-secondary shrink-0" />
                           <span className="text-text-primary">{cust.telefono}</span>
                         </div>
                       )}
                       <div className="flex items-center gap-2.5 text-sm">
-                        <IconCalendar className="w-4 h-4 text-text-secondary shrink-0" />
+                        <CalendarBlank className="w-4 h-4 text-text-secondary shrink-0" />
                         <span className="text-text-primary">{rental.fecha_inicio} → {rental.fecha_fin}</span>
                       </div>
                     </div>
@@ -575,7 +575,7 @@ export default function Historial() {
                             className="px-5 py-2.5 rounded-[12px] text-sm font-semibold text-white transition-all hover:brightness-110 disabled:opacity-50 flex items-center gap-1.5"
                             style={{ background: 'linear-gradient(135deg, #D4AF37 0%, #A8823A 100%)' }}
                           >
-                            <IconCash className="w-4 h-4" />
+                            <Money className="w-4 h-4" />
                             {abonando ? '...' : 'Abonar'}
                           </button>
                         </div>
@@ -591,7 +591,7 @@ export default function Historial() {
                         className="w-full py-3 rounded-[14px] text-sm font-semibold text-white transition-all hover:brightness-110 disabled:opacity-60 flex items-center justify-center gap-2"
                         style={{ background: 'linear-gradient(135deg, #25D366 0%, #128C7E 100%)' }}
                       >
-                        <IconBrandWhatsapp className="w-4 h-4" />
+                        <WhatsappLogo className="w-4 h-4" />
                         {enviandoWa ? 'Generando...' : 'Enviar factura por WhatsApp'}
                       </button>
                     )}
@@ -601,7 +601,7 @@ export default function Historial() {
                         className="flex-1 py-3 rounded-[14px] text-sm font-semibold text-white transition-all hover:brightness-110 flex items-center justify-center gap-1.5"
                         style={{ background: 'linear-gradient(135deg, #D4AF37 0%, #A8823A 100%)' }}
                       >
-                        <IconEdit className="w-4 h-4" />
+                        <PencilSimple className="w-4 h-4" />
                         Editar factura
                       </button>
                       {rental.estado === 'activo' && cantAlq > 0 && (

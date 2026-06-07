@@ -33,4 +33,26 @@ export default defineConfig({
       },
     }),
   ],
+  build: {
+    rollupOptions: {
+      output: {
+        // Separa las librerías grandes en bloques propios para que el
+        // navegador los cachee aparte y no procese todo en un solo archivo.
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return
+          if (id.includes('recharts') || id.includes('d3-')) return 'charts'
+          if (id.includes('framer-motion')) return 'motion'
+          if (id.includes('@supabase')) return 'supabase'
+          if (
+            id.includes('node_modules/react/') ||
+            id.includes('node_modules/react-dom/') ||
+            id.includes('node_modules/react-router') ||
+            id.includes('node_modules/scheduler/')
+          ) {
+            return 'react'
+          }
+        },
+      },
+    },
+  },
 })

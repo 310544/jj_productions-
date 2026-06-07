@@ -4,9 +4,9 @@ import { supabase } from '../lib/supabase'
 import { formatDate } from '../lib/formatDate'
 import type { Prenda } from '../types'
 import {
-  IconArrowLeft, IconUser, IconPhone, IconCalendar,
-  IconCheck, IconAlertTriangle, IconTrash,
-} from '@tabler/icons-react'
+  ArrowLeft, User, Phone, CalendarBlank,
+  Check, Warning, Trash,
+} from '@phosphor-icons/react'
 
 interface RentalInfo {
   customer_name: string
@@ -187,7 +187,7 @@ export default function DetallePrenda() {
           }}
           aria-label="Volver"
         >
-          <IconArrowLeft className="w-5 h-5" aria-hidden="true" />
+          <ArrowLeft className="w-5 h-5" aria-hidden="true" />
         </button>
         <p className="text-center py-10" style={{ color: 'var(--danger)' }}>{error}</p>
       </div>
@@ -208,7 +208,7 @@ export default function DetallePrenda() {
         }}
         aria-label="Volver"
       >
-        <IconArrowLeft className="w-5 h-5" aria-hidden="true" />
+        <ArrowLeft className="w-5 h-5" aria-hidden="true" />
       </button>
 
       <div
@@ -302,7 +302,7 @@ export default function DetallePrenda() {
       {rentals.length > 0 && (
         <div className="space-y-3">
           <h3 className="font-semibold text-text-primary flex items-center gap-2">
-            <IconCalendar className="w-4 h-4" style={{ color: 'var(--accent)' }} aria-hidden="true" />
+            <CalendarBlank className="w-4 h-4" style={{ color: 'var(--accent)' }} aria-hidden="true" />
             Alquileres ({rentals.length})
           </h3>
 
@@ -312,17 +312,17 @@ export default function DetallePrenda() {
               <div key={r.rental_id} className="rounded-[16px] p-5 space-y-4" style={cardStyle}>
                 <div className="space-y-3">
                   <div className="flex items-center gap-3">
-                    <IconUser className="w-5 h-5 text-text-secondary shrink-0" aria-hidden="true" />
+                    <User className="w-5 h-5 text-text-secondary shrink-0" aria-hidden="true" />
                     <p className="text-sm font-medium text-text-primary">{r.customer_name}</p>
                   </div>
 
                   <div className="flex items-center gap-3">
-                    <IconPhone className="w-5 h-5 text-text-secondary shrink-0" aria-hidden="true" />
+                    <Phone className="w-5 h-5 text-text-secondary shrink-0" aria-hidden="true" />
                     <p className="text-sm text-text-primary">{r.customer_phone}</p>
                   </div>
 
                   <div className="flex items-center gap-3">
-                    <IconCalendar className="w-5 h-5 text-text-secondary shrink-0" aria-hidden="true" />
+                    <CalendarBlank className="w-5 h-5 text-text-secondary shrink-0" aria-hidden="true" />
                     <div className="flex gap-2 text-sm">
                       <span className="text-text-primary">{formatDate(r.fecha_inicio)}</span>
                       <span className="text-text-tertiary">→</span>
@@ -337,7 +337,7 @@ export default function DetallePrenda() {
 
                   {vencida && (
                     <div className="flex items-center gap-2 text-sm" style={{ color: 'var(--danger)' }}>
-                      <IconAlertTriangle className="w-4 h-4" aria-hidden="true" />
+                      <Warning className="w-4 h-4" aria-hidden="true" />
                       <span className="font-medium">Fecha de devolucion vencida</span>
                     </div>
                   )}
@@ -353,7 +353,7 @@ export default function DetallePrenda() {
                     background: 'var(--success-bg)',
                   }}
                 >
-                  <IconCheck className="w-5 h-5" aria-hidden="true" />
+                  <Check className="w-5 h-5" aria-hidden="true" />
                   {updatingId === r.rental_id ? 'Actualizando...' : 'Marcar como devuelto'}
                 </button>
               </div>
@@ -378,7 +378,7 @@ export default function DetallePrenda() {
           background: 'var(--danger-bg)',
         }}
       >
-        <IconTrash className="w-5 h-5" aria-hidden="true" />
+        <Trash className="w-5 h-5" aria-hidden="true" />
         {deleting ? 'Eliminando...' : 'Eliminar prenda'}
       </button>
     </div>

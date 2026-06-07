@@ -4,9 +4,9 @@ import { usePrendasStore } from '../store/usePrendasStore'
 import { supabase } from '../lib/supabase'
 import type { Categoria } from '../types'
 import {
-  IconArrowLeft, IconCamera, IconPhoto, IconChevronDown,
-  IconScan, IconCurrencyDollar, IconDeviceFloppy,
-} from '@tabler/icons-react'
+  ArrowLeft, Camera, Image as PhotoIcon, CaretDown,
+  Scan, CurrencyDollar, FloppyDisk,
+} from '@phosphor-icons/react'
 
 const TIPOS = [
   'Traje', 'Smoking', 'Frac', 'Traje típico', 'Traje sastre', 'Traje coctel',
@@ -155,7 +155,7 @@ export default function AgregarPrenda({ inPopup, onClose }: Props = {}) {
             }}
             aria-label="Volver"
           >
-            <IconArrowLeft className="w-5 h-5" style={{ color: 'var(--accent)' }} aria-hidden="true" />
+            <ArrowLeft className="w-5 h-5" style={{ color: 'var(--accent)' }} aria-hidden="true" />
           </button>
           <h2 className="text-lg font-bold text-text-primary">Agregar prenda</h2>
         </div>
@@ -188,7 +188,7 @@ export default function AgregarPrenda({ inPopup, onClose }: Props = {}) {
                 animation: 'pulse-icon 2s ease-in-out infinite',
               }}
             >
-              <IconCamera className="w-7 h-7" style={{ color: 'var(--danger)' }} aria-hidden="true" />
+              <Camera className="w-7 h-7" style={{ color: 'var(--danger)' }} aria-hidden="true" />
             </div>
             <p className="text-sm font-semibold" style={{ color: 'var(--danger)' }}>Toca para agregar imagen</p>
           </div>
@@ -217,7 +217,7 @@ export default function AgregarPrenda({ inPopup, onClose }: Props = {}) {
             color: 'var(--text-primary)',
           }}
         >
-          <IconCamera className="w-5 h-5" style={{ color: 'var(--accent)' }} aria-hidden="true" />
+          <Camera className="w-5 h-5" style={{ color: 'var(--accent)' }} aria-hidden="true" />
           Camara
         </button>
         <button
@@ -230,7 +230,7 @@ export default function AgregarPrenda({ inPopup, onClose }: Props = {}) {
             color: 'var(--text-primary)',
           }}
         >
-          <IconPhoto className="w-5 h-5" style={{ color: 'var(--accent)' }} aria-hidden="true" />
+          <PhotoIcon className="w-5 h-5" style={{ color: 'var(--accent)' }} aria-hidden="true" />
           Galeria
         </button>
       </div>
@@ -268,7 +268,7 @@ export default function AgregarPrenda({ inPopup, onClose }: Props = {}) {
               }}
             >
               {tipo || 'Seleccionar tipo'}
-              <IconChevronDown
+              <CaretDown
                 className="w-5 h-5 shrink-0"
                 style={{ color: 'var(--text-secondary)' }}
                 aria-hidden="true"
@@ -321,7 +321,7 @@ export default function AgregarPrenda({ inPopup, onClose }: Props = {}) {
               }}
             >
               {categoria || 'Seleccionar categoria'}
-              <IconChevronDown
+              <CaretDown
                 className="w-5 h-5 shrink-0"
                 style={{ color: 'var(--text-secondary)' }}
                 aria-hidden="true"
@@ -363,7 +363,7 @@ export default function AgregarPrenda({ inPopup, onClose }: Props = {}) {
             Codigo unico
           </label>
           <div className="relative">
-            <IconScan
+            <Scan
               className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5"
               style={{ color: 'var(--accent)' }}
               aria-hidden="true"
@@ -398,7 +398,7 @@ export default function AgregarPrenda({ inPopup, onClose }: Props = {}) {
             Precio de alquiler (opcional)
           </label>
           <div className="relative">
-            <IconCurrencyDollar
+            <CurrencyDollar
               className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5"
               style={{ color: 'var(--accent)' }}
               aria-hidden="true"
@@ -469,7 +469,7 @@ export default function AgregarPrenda({ inPopup, onClose }: Props = {}) {
         className="w-full py-3.5 text-white font-semibold rounded-[14px] transition-all hover:brightness-110 disabled:opacity-50 flex items-center justify-center gap-2"
         style={{ background: 'var(--btn-primary)' }}
       >
-        <IconDeviceFloppy className="w-5 h-5" aria-hidden="true" />
+        <FloppyDisk className="w-5 h-5" aria-hidden="true" />
         {saving ? 'Guardando...' : 'Guardar prenda'}
       </button>
     </div>

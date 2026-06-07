@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { IconCalendar, IconChevronLeft, IconChevronRight } from '@tabler/icons-react'
+import { CalendarBlank, CaretLeft, CaretRight } from '@phosphor-icons/react'
 import { formatDate } from '../lib/formatDate'
 
 const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
@@ -76,7 +76,7 @@ export default function DatePicker({ value, onChange, label, placeholder = 'Sele
           color: value ? 'var(--text-primary)' : 'var(--text-tertiary)',
         }}
       >
-        <IconCalendar className="w-4 h-4 shrink-0" style={{ color: open ? 'var(--accent)' : 'var(--text-secondary)' }} />
+        <CalendarBlank className="w-4 h-4 shrink-0" style={{ color: open ? 'var(--accent)' : 'var(--text-secondary)' }} />
         <span className="flex-1 min-w-0 truncate">
           {value ? formatDate(value) : placeholder}
         </span>
@@ -116,7 +116,7 @@ export default function DatePicker({ value, onChange, label, placeholder = 'Sele
                   className="w-7 h-7 flex items-center justify-center rounded-full hover:brightness-95 transition-all"
                   style={{ background: 'rgba(0,0,0,0.04)' }}
                 >
-                  <IconChevronLeft className="w-4 h-4" style={{ color: 'var(--text-secondary)' }} />
+                  <CaretLeft className="w-4 h-4" style={{ color: 'var(--text-secondary)' }} />
                 </button>
                 <p className="text-sm font-semibold text-text-primary">
                   {MESES[month]} {year}
@@ -127,7 +127,7 @@ export default function DatePicker({ value, onChange, label, placeholder = 'Sele
                   className="w-7 h-7 flex items-center justify-center rounded-full hover:brightness-95 transition-all"
                   style={{ background: 'rgba(0,0,0,0.04)' }}
                 >
-                  <IconChevronRight className="w-4 h-4" style={{ color: 'var(--text-secondary)' }} />
+                  <CaretRight className="w-4 h-4" style={{ color: 'var(--text-secondary)' }} />
                 </button>
               </div>
 

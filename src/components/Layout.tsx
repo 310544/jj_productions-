@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, Suspense, lazy } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -13,10 +13,16 @@ import {
   Sun,
   Moon,
 } from '@phosphor-icons/react'
-import AgregarPrenda from '../pages/AgregarPrenda'
-import Alquiler from '../pages/Alquiler'
 import BackgroundElements from './BackgroundElements'
-import { GastoModal } from '../pages/Contabilidad'
+
+// Modales que solo aparecen al tocar un botón. Con carga diferida, su código
+// (y librerías pesadas como recharts, que arrastra Contabilidad/GastoModal)
+// solo se descarga la primera vez que se abre el modal, no al iniciar la app.
+const AgregarPrenda = lazy(() => import('../pages/AgregarPrenda'))
+const Alquiler = lazy(() => import('../pages/Alquiler'))
+const GastoModal = lazy(() =>
+  import('../pages/Contabilidad').then((m) => ({ default: m.GastoModal }))
+)
 
 type Popup = 'alquiler' | 'agregar' | null
 
@@ -315,26 +321,30 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       </div>
 
       {/* Modals */}
-      <ModalWrapper open={popup === 'alquiler'} onClose={() => setPopup(null)}>
-        <Alquiler inPopup onClose={() => setPopup(null)} />
-      </ModalWrapper>
+      <Suspense fallback={null}>
+        <ModalWrapper open={popup === 'alquiler'} onClose={() => setPopup(null)}>
+          <Alquiler inPopup onClose={() => setPopup(null)} />
+        </ModalWrapper>
 
-      <ModalWrapper open={popup === 'agregar'} onClose={() => setPopup(null)}>
-        <AgregarPrenda inPopup onClose={() => setPopup(null)} />
-      </ModalWrapper>
+        <ModalWrapper open={popup === 'agregar'} onClose={() => setPopup(null)}>
+          <AgregarPrenda inPopup onClose={() => setPopup(null)} />
+        </ModalWrapper>
 
-      <PinModal
-        open={pinOpen}
-        onClose={() => setPinOpen(false)}
-        onSuccess={() => { setPinOpen(false); navigate('/contabilidad') }}
-      />
+        <PinModal
+          open={pinOpen}
+          onClose={() => setPinOpen(false)}
+          onSuccess={() => { setPinOpen(false); navigate('/contabilidad') }}
+        />
 
-      <GastoModal
-        open={gastoOpen}
-        onClose={() => setGastoOpen(false)}
-        defaultFecha={new Date().toISOString().split('T')[0]}
-        onSaved={() => setGastoOpen(false)}
-      />
+        {gastoOpen && (
+          <GastoModal
+            open={gastoOpen}
+            onClose={() => setGastoOpen(false)}
+            defaultFecha={new Date().toISOString().split('T')[0]}
+            onSaved={() => setGastoOpen(false)}
+          />
+        )}
+      </Suspense>
     </div>
   )
 }
