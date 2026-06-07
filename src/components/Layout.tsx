@@ -230,8 +230,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       {/* Toggle tema — flotante (móvil) */}
       <button
         onClick={toggleTheme}
-        className="md:hidden fixed top-4 right-4 z-40 w-10 h-10 flex items-center justify-center rounded-full transition-all active:scale-95"
+        className="md:hidden fixed right-4 z-40 w-10 h-10 flex items-center justify-center rounded-full transition-all active:scale-95"
         style={{
+          top: 'calc(env(safe-area-inset-top) + 0.75rem)',
           background: 'var(--surface)',
           border: '1px solid var(--surface-border)',
           color: 'var(--text-secondary)',
@@ -247,6 +248,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         className="relative z-10 flex-1 min-w-0 min-h-screen pb-24 md:pb-10"
         style={{
           marginLeft: 0,
+          paddingTop: 'env(safe-area-inset-top)',
           background: 'var(--main-bg)',
         }}
       >
@@ -256,7 +258,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       </main>
 
       {/* ── Mobile bottom nav ── */}
-      <div className="fixed bottom-0 left-0 right-0 z-20 flex justify-center pb-5 pointer-events-none md:hidden">
+      <div
+        className="fixed bottom-0 left-0 right-0 z-20 flex justify-center pointer-events-none md:hidden"
+        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 1.25rem)' }}
+      >
         <div
           className="flex items-center gap-1 px-2.5 py-2 rounded-full pointer-events-auto backdrop-blur-xl"
           style={{

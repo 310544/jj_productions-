@@ -9,14 +9,14 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
+      includeAssets: ['favicon.png', 'apple-touch-icon.png'],
       manifest: {
         name: 'JJ Production - Alquiler de Trajes',
         short_name: 'JJ Production',
         description: 'Gestión de alquiler y venta de trajes: inventario, facturas y contabilidad.',
         lang: 'es',
-        theme_color: '#1A150D',
-        background_color: '#1A150D',
+        theme_color: '#FFFFFF',
+        background_color: '#FFFFFF',
         display: 'standalone',
         orientation: 'portrait',
         start_url: '/',

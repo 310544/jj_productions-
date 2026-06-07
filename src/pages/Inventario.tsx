@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
+import { TrendDown } from '@phosphor-icons/react'
 import GarmentCard from '../components/GarmentCard'
 import Hero from '../components/Hero'
 import CategoryFilter from '../components/CategoryFilter'
 import GarmentModal from '../components/GarmentModal'
+import { GastoModal } from './Contabilidad'
 import { usePrendasStore } from '../store/usePrendasStore'
 import type { Categoria, Prenda } from '../types'
 
@@ -11,6 +13,7 @@ export default function Inventario() {
   const [search, setSearch] = useState('')
   const [categoria, setCategoria] = useState<Categoria | null>(null)
   const [selectedPrenda, setSelectedPrenda] = useState<Prenda | null>(null)
+  const [gastoOpen, setGastoOpen] = useState(false)
 
   useEffect(() => {
     fetchPrendas()
@@ -44,6 +47,21 @@ export default function Inventario() {
           onSearchChange={setSearch}
         />
       </div>
+
+      {/* Agregar gasto — solo móvil (entre búsqueda y categorías) */}
+      <button
+        onClick={() => setGastoOpen(true)}
+        className="md:hidden w-full flex items-center justify-center gap-2 py-3 rounded-full text-sm font-semibold transition-all active:scale-[0.98]"
+        style={{
+          background: 'var(--surface)',
+          border: '1px solid rgba(201,168,76,0.40)',
+          color: '#8B6914',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+        }}
+      >
+        <TrendDown size={18} weight="light" />
+        Agregar gasto
+      </button>
 
       <div className="max-w-[1500px] mx-auto w-full space-y-3">
         <p className="text-xs font-semibold text-text-tertiary uppercase tracking-wider px-0.5">
@@ -108,6 +126,13 @@ export default function Inventario() {
           }}
         />
       )}
+
+      <GastoModal
+        open={gastoOpen}
+        onClose={() => setGastoOpen(false)}
+        defaultFecha={new Date().toISOString().split('T')[0]}
+        onSaved={() => setGastoOpen(false)}
+      />
     </div>
   )
 }
