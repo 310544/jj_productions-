@@ -11,6 +11,20 @@
     <meta name="apple-mobile-web-app-title" content="JJ Production" />
     <meta name="mobile-web-app-capable" content="yes" />
     <title>JJ Production · Alquiler de Trajes</title>
+    <!-- Fuente cargada SIN bloquear el render: el navegador pinta la app de
+         inmediato (con una fuente del sistema) y cambia a Plus Jakarta Sans
+         cuando termina de bajar. Evita la pantalla en blanco esperando a Google. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+      media="print"
+      onload="this.media='all'"
+    />
+    <noscript>
+      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" />
+    </noscript>
     <style>
       /* Loader instantáneo: se ve apenas abre la app, antes de que cargue el
          JavaScript. Evita la pantalla en blanco. React lo reemplaza al montar. */
