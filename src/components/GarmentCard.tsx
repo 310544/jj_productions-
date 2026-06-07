@@ -7,15 +7,24 @@ interface Props {
 }
 
 export default function GarmentCard({ prenda, onSelect }: Props) {
-  const ocupado = prenda.estado === 'ocupado'
-  const vendido = prenda.estado === 'vendido'
-  const fechas = prenda.fechas_ocupado || []
+  // Accesorios: se manejan por stock (cantidad), no por estado ocupado/vendido
+  const esAccesorio = prenda.categoria === 'Accesorios'
+  const stock = prenda.cantidad ?? 1
+  const agotado = esAccesorio && stock <= 0
 
-  const status = vendido
-    ? { bg: 'linear-gradient(135deg, #9CA3AF, #6B7280)', label: 'Vendido' }
-    : ocupado
-      ? { bg: 'linear-gradient(135deg, #F87171, #DC2626)', label: 'Ocupado' }
-      : { bg: 'linear-gradient(135deg, #34D399, #16A34A)', label: 'Disponible' }
+  const ocupado = !esAccesorio && prenda.estado === 'ocupado'
+  const vendido = !esAccesorio && prenda.estado === 'vendido'
+  const fechas = esAccesorio ? [] : (prenda.fechas_ocupado || [])
+
+  const status = esAccesorio
+    ? (agotado
+        ? { bg: 'linear-gradient(135deg, #9CA3AF, #6B7280)', label: 'Agotado' }
+        : { bg: 'linear-gradient(135deg, #34D399, #16A34A)', label: `Quedan ${stock}` })
+    : vendido
+      ? { bg: 'linear-gradient(135deg, #9CA3AF, #6B7280)', label: 'Vendido' }
+      : ocupado
+        ? { bg: 'linear-gradient(135deg, #F87171, #DC2626)', label: 'Ocupado' }
+        : { bg: 'linear-gradient(135deg, #34D399, #16A34A)', label: 'Disponible' }
 
   return (
     <div
@@ -111,8 +120,8 @@ export default function GarmentCard({ prenda, onSelect }: Props) {
           </div>
         )}
 
-        {/* Vendido overlay */}
-        {vendido && (
+        {/* Vendido / Agotado overlay */}
+        {(vendido || agotado) && (
           <div className="absolute inset-0 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.42)' }}>
             <span
               className="text-[11px] font-bold tracking-[0.20em] uppercase px-4 py-1.5 rounded-full"
@@ -123,7 +132,7 @@ export default function GarmentCard({ prenda, onSelect }: Props) {
                 backdropFilter: 'blur(8px)',
               }}
             >
-              Vendido
+              {agotado ? 'Agotado' : 'Vendido'}
             </span>
           </div>
         )}

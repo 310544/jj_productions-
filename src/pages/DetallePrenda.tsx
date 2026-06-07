@@ -25,6 +25,18 @@ export default function DetallePrenda() {
   const [error, setError] = useState<string | null>(null)
   const [updatingId, setUpdatingId] = useState<number | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [savingStock, setSavingStock] = useState(false)
+
+  const esAccesorio = prenda?.categoria === 'Accesorios'
+
+  async function cambiarStock(delta: number) {
+    if (!prenda) return
+    const nuevo = Math.max(0, (prenda.cantidad ?? 0) + delta)
+    setSavingStock(true)
+    await supabase.from('garments').update({ cantidad: nuevo }).eq('id', prenda.id)
+    setPrenda({ ...prenda, cantidad: nuevo })
+    setSavingStock(false)
+  }
 
   useEffect(() => {
     fetchPrenda()
@@ -225,7 +237,9 @@ export default function DetallePrenda() {
             color: 'rgba(0,0,0,0.55)',
           }}
         >
-          {prenda.estado}
+          {esAccesorio
+            ? ((prenda.cantidad ?? 0) > 0 ? `Quedan ${prenda.cantidad}` : 'Agotado')
+            : prenda.estado}
         </span>
       </div>
 
@@ -243,7 +257,41 @@ export default function DetallePrenda() {
         )}
       </div>
 
-      {rentals.length === 0 && prenda.estado === 'disponible' && (
+      {/* Stock de accesorios — reponer / ajustar */}
+      {esAccesorio && (
+        <div className="rounded-[16px] p-5" style={cardStyle}>
+          <p className="text-sm font-semibold text-text-primary mb-3">Stock en inventario</p>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => cambiarStock(-1)}
+              disabled={savingStock || (prenda.cantidad ?? 0) <= 0}
+              className="w-12 h-12 rounded-[12px] text-2xl font-bold flex items-center justify-center transition-all hover:brightness-110 active:scale-95 disabled:opacity-30"
+              style={{ background: 'var(--glass-strong)', border: '1px solid var(--glass-border)', color: 'var(--accent)' }}
+              aria-label="Restar uno"
+            >
+              −
+            </button>
+            <div className="flex-1 text-center">
+              <p className="text-3xl font-extrabold text-text-primary leading-none">{prenda.cantidad ?? 0}</p>
+              <p className="text-xs text-text-tertiary mt-1">unidades</p>
+            </div>
+            <button
+              onClick={() => cambiarStock(1)}
+              disabled={savingStock}
+              className="w-12 h-12 rounded-[12px] text-2xl font-bold flex items-center justify-center transition-all hover:brightness-110 active:scale-95 disabled:opacity-40"
+              style={{ background: 'var(--glass-strong)', border: '1px solid var(--glass-border)', color: 'var(--accent)' }}
+              aria-label="Sumar uno"
+            >
+              +
+            </button>
+          </div>
+          <p className="text-xs text-text-tertiary mt-3 text-center">
+            Usa + para reponer cuando compres más. El stock baja solo al vender.
+          </p>
+        </div>
+      )}
+
+      {!esAccesorio && rentals.length === 0 && prenda.estado === 'disponible' && (
         <div className="rounded-[16px] p-5 text-center" style={cardStyle}>
           <p className="text-4xl mb-2 opacity-30">✅</p>
           <p className="text-text-secondary font-medium">Prenda disponible</p>

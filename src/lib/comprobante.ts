@@ -39,16 +39,16 @@ export async function generarComprobanteBlob(d: ComprobanteData): Promise<Blob |
   if (!ctx) return null
 
   const scale = 3
-  const w = 400               // más angosto = formato vertical tipo recibo (se ve más grande en mobile)
-  const pad = 28
-  const headerH = 104
+  const w = 380               // más angosto = formato vertical tipo recibo (se ve más grande en mobile)
+  const pad = 30
+  const headerH = 120
 
   // Espaciados (letra más grande → más alto en cada fila)
-  const TITLE_H = 22
-  const ROW_H = 28
-  const ITEM_H = 32
-  const PAGO_H = 28
-  const DIV_H = 22            // divisor: 8 antes + 14 después
+  const TITLE_H = 28
+  const ROW_H = 32
+  const ITEM_H = 36
+  const PAGO_H = 32
+  const DIV_H = 28            // divisor: 10 antes + 18 después
 
   const itemsCount = d.prendas.length
   const validPagos = d.pagos.filter((p) => (p.monto || 0) > 0)
@@ -57,15 +57,15 @@ export async function generarComprobanteBlob(d: ComprobanteData): Promise<Blob |
   const direccion = (d.direccion || '').trim()
   const quienEntrega = (d.quienEntrega || '').trim()
   const clientRows = 1 + 1 + (direccion ? 1 : 0) + 1 + (quienEntrega ? 1 : 0)
-  const totalsBoxH = 150
+  const totalsBoxH = 165
 
   // Altura dinamica (debe coincidir con los incrementos de dibujo)
-  let H = headerH + 36
+  let H = headerH + 44
   H += TITLE_H + clientRows * ROW_H + DIV_H
   H += TITLE_H + itemsCount * ITEM_H + DIV_H
   if (pagosCount > 0) H += TITLE_H + pagosCount * PAGO_H + DIV_H
   H += totalsBoxH + 24
-  H += 30
+  H += 36
 
   canvas.width = w * scale
   canvas.height = H * scale
@@ -89,20 +89,20 @@ export async function generarComprobanteBlob(d: ComprobanteData): Promise<Blob |
   // Marca
   ctx.textAlign = 'left'
   ctx.fillStyle = '#E8C766'
-  ctx.font = `800 24px ${FONT}`
-  ctx.fillText('JJ PRODUCTION', pad, 44)
+  ctx.font = `800 30px ${FONT}`
+  ctx.fillText('JJ PRODUCTION', pad, 54)
   ctx.fillStyle = 'rgba(255,255,255,0.55)'
-  ctx.font = `500 11px ${FONT}`
-  ctx.fillText('Alquiler & Venta de Trajes', pad, 64)
+  ctx.font = `500 14px ${FONT}`
+  ctx.fillText('Alquiler & Venta de Trajes', pad, 80)
 
   // Factura # (derecha)
   ctx.textAlign = 'right'
   ctx.fillStyle = 'rgba(255,255,255,0.45)'
-  ctx.font = `600 10px ${FONT}`
-  ctx.fillText('FACTURA', w - pad, 38)
+  ctx.font = `600 13px ${FONT}`
+  ctx.fillText('FACTURA', w - pad, 46)
   ctx.fillStyle = '#F2E4BC'
-  ctx.font = `800 18px ${FONT}`
-  ctx.fillText(d.codigo, w - pad, 60)
+  ctx.font = `800 23px ${FONT}`
+  ctx.fillText(d.codigo, w - pad, 76)
   ctx.textAlign = 'left'
 
   // Barra de acento dorada
@@ -110,35 +110,35 @@ export async function generarComprobanteBlob(d: ComprobanteData): Promise<Blob |
   gb.addColorStop(0, '#D4AF37')
   gb.addColorStop(1, '#A8823A')
   ctx.fillStyle = gb
-  ctx.fillRect(0, headerH, w, 4)
+  ctx.fillRect(0, headerH, w, 5)
 
-  let y = headerH + 36
+  let y = headerH + 44
 
   const sectionTitle = (t: string) => {
     ctx.fillStyle = '#A8823A'
-    ctx.font = `700 11px ${FONT}`
+    ctx.font = `700 14px ${FONT}`
     ctx.fillText(t.toUpperCase(), pad, y)
-    y += 18
+    y += 23
   }
   const divider = () => {
-    y += 8
+    y += 10
     ctx.strokeStyle = 'rgba(0,0,0,0.08)'
     ctx.lineWidth = 1
     ctx.beginPath()
     ctx.moveTo(pad, y)
     ctx.lineTo(w - pad, y)
     ctx.stroke()
-    y += 14
+    y += 18
   }
   const row = (label: string, value: string) => {
     ctx.fillStyle = '#9A9488'
-    ctx.font = `500 12px ${FONT}`
+    ctx.font = `500 15px ${FONT}`
     ctx.fillText(label, pad, y)
     const lw = ctx.measureText(label).width
     ctx.fillStyle = '#1C1A14'
-    ctx.font = `600 12px ${FONT}`
-    ctx.fillText(value, pad + lw + 8, y)
-    y += 24
+    ctx.font = `600 15px ${FONT}`
+    ctx.fillText(value, pad + lw + 10, y)
+    y += 30
   }
 
   // ===== Datos del cliente =====
@@ -154,29 +154,29 @@ export async function generarComprobanteBlob(d: ComprobanteData): Promise<Blob |
   sectionTitle(`Prendas (${itemsCount})`)
   for (const item of d.prendas) {
     const isAlq = item.tipo === 'alquiler'
-    const pillW = 36
+    const pillW = 46
     ctx.fillStyle = isAlq ? 'rgba(201,168,76,0.16)' : 'rgba(0,0,0,0.06)'
     ctx.beginPath()
-    ctx.roundRect(pad, y - 11, pillW, 16, 5)
+    ctx.roundRect(pad, y - 14, pillW, 20, 6)
     ctx.fill()
     ctx.fillStyle = isAlq ? '#A8823A' : '#7A746A'
-    ctx.font = `700 9px ${FONT}`
+    ctx.font = `700 11px ${FONT}`
     ctx.textAlign = 'center'
     ctx.fillText(isAlq ? 'ALQ' : 'VTA', pad + pillW / 2, y)
     ctx.textAlign = 'left'
     ctx.fillStyle = '#1C1A14'
-    ctx.font = `600 12px ${FONT}`
-    ctx.fillText(item.codigo, pad + pillW + 10, y)
+    ctx.font = `600 15px ${FONT}`
+    ctx.fillText(item.codigo, pad + pillW + 12, y)
     const cw = ctx.measureText(item.codigo).width
     ctx.fillStyle = '#9A9488'
-    ctx.font = `400 12px ${FONT}`
-    ctx.fillText(`  ${item.nombre}`, pad + pillW + 10 + cw, y)
+    ctx.font = `400 15px ${FONT}`
+    ctx.fillText(`  ${item.nombre}`, pad + pillW + 12 + cw, y)
     ctx.textAlign = 'right'
     ctx.fillStyle = '#1C1A14'
-    ctx.font = `600 12px ${FONT}`
+    ctx.font = `600 15px ${FONT}`
     ctx.fillText(money(item.precio || 0), w - pad, y)
     ctx.textAlign = 'left'
-    y += 26
+    y += 33
   }
   divider()
 
@@ -185,14 +185,14 @@ export async function generarComprobanteBlob(d: ComprobanteData): Promise<Blob |
     sectionTitle(`Abonos (${pagosCount})`)
     for (const p of validPagos) {
       ctx.fillStyle = '#9A9488'
-      ctx.font = `400 12px ${FONT}`
+      ctx.font = `400 15px ${FONT}`
       ctx.fillText(p.fecha, pad, y)
       ctx.textAlign = 'right'
       ctx.fillStyle = '#16a34a'
-      ctx.font = `600 12px ${FONT}`
+      ctx.font = `600 15px ${FONT}`
       ctx.fillText(money(p.monto || 0), w - pad, y)
       ctx.textAlign = 'left'
-      y += 24
+      y += 30
     }
     divider()
   }
@@ -204,63 +204,63 @@ export async function generarComprobanteBlob(d: ComprobanteData): Promise<Blob |
   ctx.strokeStyle = 'rgba(201,168,76,0.40)'
   ctx.lineWidth = 1
   ctx.beginPath()
-  ctx.roundRect(pad, boxTop, w - pad * 2, totalsBoxH, 14)
+  ctx.roundRect(pad, boxTop, w - pad * 2, totalsBoxH, 16)
   ctx.fill()
   ctx.stroke()
 
-  const bx = pad + 18
-  const bxr = w - pad - 18
-  let by = boxTop + 28
+  const bx = pad + 20
+  const bxr = w - pad - 20
+  let by = boxTop + 34
 
   const totalRow = (label: string, value: string, color: string, bold = false) => {
     ctx.textAlign = 'left'
     ctx.fillStyle = '#7A746A'
-    ctx.font = `500 12px ${FONT}`
+    ctx.font = `500 15px ${FONT}`
     ctx.fillText(label, bx, by)
     ctx.textAlign = 'right'
     ctx.fillStyle = color
-    ctx.font = `${bold ? 800 : 700} ${bold ? 15 : 13}px ${FONT}`
+    ctx.font = `${bold ? 800 : 700} ${bold ? 19 : 16}px ${FONT}`
     ctx.fillText(value, bxr, by)
     ctx.textAlign = 'left'
   }
 
   totalRow('Total', money(d.total || 0), '#1C1A14')
-  by += 26
+  by += 32
   totalRow('Abonado', money(d.abonado || 0), '#16a34a')
-  by += 14
+  by += 18
   ctx.strokeStyle = 'rgba(201,168,76,0.30)'
   ctx.beginPath()
   ctx.moveTo(bx, by)
   ctx.lineTo(bxr, by)
   ctx.stroke()
-  by += 24
+  by += 30
 
   if (pagado) {
     ctx.textAlign = 'left'
     ctx.fillStyle = '#7A746A'
-    ctx.font = `500 12px ${FONT}`
+    ctx.font = `500 15px ${FONT}`
     ctx.fillText('Estado', bx, by)
     ctx.textAlign = 'right'
-    ctx.font = `800 12px ${FONT}`
+    ctx.font = `800 15px ${FONT}`
     const txt = 'PAGADO'
     const tw = ctx.measureText(txt).width
     ctx.fillStyle = 'rgba(22,163,74,0.14)'
     ctx.beginPath()
-    ctx.roundRect(bxr - tw - 20, by - 14, tw + 20, 20, 10)
+    ctx.roundRect(bxr - tw - 24, by - 17, tw + 24, 25, 12)
     ctx.fill()
     ctx.fillStyle = '#16a34a'
-    ctx.fillText(txt, bxr - 10, by)
+    ctx.fillText(txt, bxr - 12, by)
     ctx.textAlign = 'left'
   } else {
     totalRow('Saldo pendiente', money(deuda), '#dc2626', true)
   }
 
-  y = boxTop + totalsBoxH + 24
+  y = boxTop + totalsBoxH + 28
 
   // ===== Footer =====
   ctx.textAlign = 'center'
   ctx.fillStyle = '#9A9488'
-  ctx.font = `500 11px ${FONT}`
+  ctx.font = `500 14px ${FONT}`
   ctx.fillText(`Entrega ${d.fechaInicio}   ·   Devolución ${d.fechaFin}`, w / 2, y)
   ctx.textAlign = 'left'
 

@@ -35,7 +35,9 @@ export default function AgregarPrenda({ inPopup, onClose }: Props = {}) {
   const [codigo, setCodigo] = useState('')
   const [descripcion, setDescripcion] = useState('')
   const [precio, setPrecio] = useState('')
+  const [cantidad, setCantidad] = useState('1')
   const [categoria, setCategoria] = useState<Categoria | ''>('')
+  const esAccesorio = categoria === 'Accesorios'
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [openTipo, setOpenTipo] = useState(false)
@@ -118,6 +120,7 @@ export default function AgregarPrenda({ inPopup, onClose }: Props = {}) {
       estado: 'disponible',
       precio: parseFloat(precio) || 0,
       categoria: categoria as Categoria,
+      cantidad: esAccesorio ? Math.max(1, parseInt(cantidad) || 1) : 1,
     })
 
     setSaving(false)
@@ -411,6 +414,47 @@ export default function AgregarPrenda({ inPopup, onClose }: Props = {}) {
             />
           </div>
         </div>
+
+        {/* Cantidad — solo para accesorios (stock por unidades) */}
+        {esAccesorio && (
+          <div>
+            <label className="block text-sm font-medium text-text-secondary mb-1.5">
+              Cantidad en stock
+            </label>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setCantidad((c) => String(Math.max(1, (parseInt(c) || 1) - 1)))}
+                className="w-12 h-12 rounded-[12px] text-xl font-bold flex items-center justify-center transition-all hover:brightness-110 active:scale-95"
+                style={{ background: 'var(--glass-strong)', border: '1px solid var(--glass-border)', color: 'var(--accent)' }}
+                aria-label="Restar"
+              >
+                −
+              </button>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={cantidad}
+                onChange={(e) => setCantidad(e.target.value.replace(/\D/g, ''))}
+                onBlur={() => setCantidad((c) => String(Math.max(1, parseInt(c) || 1)))}
+                className="flex-1 rounded-[12px] px-4 py-3 text-base text-center font-bold text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/40"
+                style={inputStyle}
+              />
+              <button
+                type="button"
+                onClick={() => setCantidad((c) => String((parseInt(c) || 0) + 1))}
+                className="w-12 h-12 rounded-[12px] text-xl font-bold flex items-center justify-center transition-all hover:brightness-110 active:scale-95"
+                style={{ background: 'var(--glass-strong)', border: '1px solid var(--glass-border)', color: 'var(--accent)' }}
+                aria-label="Sumar"
+              >
+                +
+              </button>
+            </div>
+            <p className="text-xs text-text-tertiary mt-1.5">
+              Ej: 15 corbatines. Se irá restando cada vez que vendas uno.
+            </p>
+          </div>
+        )}
       </div>
 
       {error && (

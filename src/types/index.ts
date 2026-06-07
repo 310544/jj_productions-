@@ -14,6 +14,7 @@ export interface Prenda {
   estado: EstadoPrenda
   precio: number
   categoria?: Categoria
+  cantidad?: number // stock (solo accesorios); resto = 1
   fechas_ocupado?: { fecha_inicio: string; fecha_fin: string }[]
 }
 

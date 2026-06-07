@@ -145,3 +145,10 @@ CREATE TABLE IF NOT EXISTS gastos (
 ALTER TABLE gastos ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Permitir todo en gastos" ON gastos FOR ALL TO anon USING (true) WITH CHECK (true);
 CREATE INDEX IF NOT EXISTS idx_gastos_fecha ON gastos(fecha);
+
+-- 12. Stock por cantidad para accesorios
+-- garments.cantidad  = unidades en inventario (solo relevante para categoria 'Accesorios';
+--                       para el resto siempre vale 1 = una prenda física).
+-- rental_items.cantidad = unidades vendidas en esa línea de la factura.
+ALTER TABLE garments ADD COLUMN IF NOT EXISTS cantidad INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE rental_items ADD COLUMN IF NOT EXISTS cantidad INTEGER NOT NULL DEFAULT 1;

@@ -17,6 +17,7 @@ interface GarmentSeleccionada {
   prenda: Prenda
   tipo: TipoItem
   precio: string
+  cantidad: string // unidades a vender (solo accesorios); resto = '1'
 }
 
 interface PagoLocal {
@@ -64,7 +65,7 @@ export default function Alquiler({ inPopup, onClose, editRentalId, onSaved }: Pr
   const [showConflictPopup, setShowConflictPopup] = useState(false)
   const [conflictMessage, setConflictMessage] = useState('')
   const [loadingEdit, setLoadingEdit] = useState(false)
-  const [editItemsOriginal, setEditItemsOriginal] = useState<{ garment_id: number; tipo: TipoItem }[]>([])
+  const [editItemsOriginal, setEditItemsOriginal] = useState<{ garment_id: number; tipo: TipoItem; cantidad: number; esAccesorio: boolean }[]>([])
 
   useEffect(() => {
     supabase
@@ -120,11 +121,14 @@ export default function Alquiler({ inPopup, onClose, editRentalId, onSaved }: Pr
           prenda: item.garments,
           tipo: item.tipo as TipoItem,
           precio: item.precio ? String(Math.round(item.precio)) : '',
+          cantidad: String(item.cantidad || 1),
         }))
         setSelectedGarments(mapped)
         setEditItemsOriginal(items.map((item: any) => ({
           garment_id: item.garment_id,
           tipo: item.tipo as TipoItem,
+          cantidad: item.cantidad || 1,
+          esAccesorio: item.garments?.categoria === 'Accesorios',
         })))
       }
 
@@ -223,6 +227,25 @@ export default function Alquiler({ inPopup, onClose, editRentalId, onSaved }: Pr
   }
 
   function addGarment(g: Prenda) {
+    const esAccesorio = g.categoria === 'Accesorios'
+
+    // Accesorios: se manejan por stock y se venden. No aplican conflictos de fechas.
+    if (esAccesorio) {
+      if ((g.cantidad ?? 0) <= 0) {
+        setConflictMessage(`${g.codigo} está agotado. Repón stock para poder venderlo.`)
+        setShowConflictPopup(true)
+        setSearchQuery('')
+        setSearchResults([])
+        setShowSearch(false)
+        return
+      }
+      setSelectedGarments([...selectedGarments, { prenda: g, tipo: 'venta', precio: g.precio ? String(Math.round(g.precio)) : '', cantidad: '1' }])
+      setSearchQuery('')
+      setSearchResults([])
+      setShowSearch(false)
+      return
+    }
+
     // Si ya hay fechas y esta prenda esta alquilada en un rango que se cruza, bloquear
     if (fechaInicio && fechaFin && conflictingGarments?.has(g.id)) {
       const fechas = conflictingDates.get(g.id) || 'esas fechas'
@@ -233,10 +256,27 @@ export default function Alquiler({ inPopup, onClose, editRentalId, onSaved }: Pr
       setShowSearch(false)
       return
     }
-    setSelectedGarments([...selectedGarments, { prenda: g, tipo: 'alquiler', precio: (g as any).precio ? String(Math.round((g as any).precio)) : '' }])
+    setSelectedGarments([...selectedGarments, { prenda: g, tipo: 'alquiler', precio: (g as any).precio ? String(Math.round((g as any).precio)) : '', cantidad: '1' }])
     setSearchQuery('')
     setSearchResults([])
     setShowSearch(false)
+  }
+
+  function updateGarmentCantidad(index: number, delta: number) {
+    setSelectedGarments(prev => prev.map((item, i) => {
+      if (i !== index) return item
+      const max = item.prenda.cantidad ?? 1
+      const next = Math.min(max, Math.max(1, (parseInt(item.cantidad) || 1) + delta))
+      return { ...item, cantidad: String(next) }
+    }))
+  }
+
+  // Suma/resta unidades al stock de un accesorio (lee el valor actual en BD)
+  async function ajustarStock(garmentId: number, delta: number) {
+    if (delta === 0) return
+    const { data } = await supabase.from('garments').select('cantidad').eq('id', garmentId).single()
+    const actual = data?.cantidad ?? 0
+    await supabase.from('garments').update({ cantidad: Math.max(0, actual + delta) }).eq('id', garmentId)
   }
 
   // Avisar si ya existe un cliente con el mismo nombre y apellido
@@ -390,11 +430,32 @@ export default function Alquiler({ inPopup, onClose, editRentalId, onSaved }: Pr
     // Verificar que las prendas a vender no esten ocupadas (solo en modo creacion)
     if (!editRentalId) {
       const ventaOcupadas = selectedGarments
-        .filter(item => item.tipo === 'venta' && item.prenda.estado === 'ocupado')
+        .filter(item => item.tipo === 'venta' && item.prenda.estado === 'ocupado' && item.prenda.categoria !== 'Accesorios')
       if (ventaOcupadas.length > 0) {
         setError(`No se puede vender prendas alquiladas: ${ventaOcupadas.map(i => i.prenda.codigo).join(', ')}`)
         setSaving(false)
         return
+      }
+    }
+
+    // Verificar stock suficiente de accesorios a vender.
+    // En edición, lo que esta misma factura ya tenía vendido se considera disponible
+    // (porque al guardar primero se repone y luego se vuelve a descontar).
+    const origAccQty: Record<number, number> = {}
+    for (const o of editItemsOriginal) {
+      if (o.esAccesorio && o.tipo === 'venta') {
+        origAccQty[o.garment_id] = (origAccQty[o.garment_id] || 0) + o.cantidad
+      }
+    }
+    for (const item of selectedGarments) {
+      if (item.prenda.categoria === 'Accesorios' && item.tipo === 'venta') {
+        const pedir = parseInt(item.cantidad) || 1
+        const disponible = (item.prenda.cantidad ?? 0) + (origAccQty[item.prenda.id] || 0)
+        if (pedir > disponible) {
+          setError(`No hay suficiente stock de ${item.prenda.codigo}: quedan ${item.prenda.cantidad ?? 0}, pediste ${pedir}`)
+          setSaving(false)
+          return
+        }
       }
     }
 
@@ -435,12 +496,12 @@ export default function Alquiler({ inPopup, onClose, editRentalId, onSaved }: Pr
 
     if (editRentalId) {
       // ===== MODO EDICION =====
-      // 1. Revertir garments originales a disponible
+      // 1. Revertir garments originales a disponible (accesorios NO usan estado)
       const origAlquilerIds = editItemsOriginal
-        .filter(i => i.tipo === 'alquiler')
+        .filter(i => i.tipo === 'alquiler' && !i.esAccesorio)
         .map(i => i.garment_id)
       const origVentaIds = editItemsOriginal
-        .filter(i => i.tipo === 'venta')
+        .filter(i => i.tipo === 'venta' && !i.esAccesorio)
         .map(i => i.garment_id)
 
       if (origAlquilerIds.length > 0) {
@@ -448,6 +509,11 @@ export default function Alquiler({ inPopup, onClose, editRentalId, onSaved }: Pr
       }
       if (origVentaIds.length > 0) {
         await supabase.from('garments').update({ estado: 'disponible' }).in('id', origVentaIds)
+      }
+
+      // 1b. Reponer el stock que la venta original había descontado de los accesorios
+      for (const id of Object.keys(origAccQty).map(Number)) {
+        await ajustarStock(id, origAccQty[id])
       }
 
       // 2. UPDATE rental
@@ -482,6 +548,7 @@ export default function Alquiler({ inPopup, onClose, editRentalId, onSaved }: Pr
         garment_id: item.prenda.id,
         precio: parseInt(item.precio) || 0,
         tipo: item.tipo,
+        cantidad: item.prenda.categoria === 'Accesorios' ? (parseInt(item.cantidad) || 1) : 1,
       }))
 
       const { error: itemsError } = await supabase
@@ -519,12 +586,12 @@ export default function Alquiler({ inPopup, onClose, editRentalId, onSaved }: Pr
         .update({ abono: totalAbonado })
         .eq('id', editRentalId)
 
-      // 7. Nuevo estado de garments
+      // 7. Nuevo estado de garments (accesorios NO usan estado, van por stock)
       const alquilerGarmentIds = selectedGarments
-        .filter(item => item.tipo === 'alquiler')
+        .filter(item => item.tipo === 'alquiler' && item.prenda.categoria !== 'Accesorios')
         .map(item => item.prenda.id)
       const ventaGarmentIds = selectedGarments
-        .filter(item => item.tipo === 'venta')
+        .filter(item => item.tipo === 'venta' && item.prenda.categoria !== 'Accesorios')
         .map(item => item.prenda.id)
 
       if (alquilerGarmentIds.length > 0) {
@@ -532,6 +599,13 @@ export default function Alquiler({ inPopup, onClose, editRentalId, onSaved }: Pr
       }
       if (ventaGarmentIds.length > 0) {
         await supabase.from('garments').update({ estado: 'vendido' }).in('id', ventaGarmentIds)
+      }
+
+      // 7b. Descontar stock de los accesorios vendidos en esta factura
+      for (const item of selectedGarments) {
+        if (item.prenda.categoria === 'Accesorios' && item.tipo === 'venta') {
+          await ajustarStock(item.prenda.id, -(parseInt(item.cantidad) || 1))
+        }
       }
 
       setSaving(false)
@@ -571,6 +645,7 @@ export default function Alquiler({ inPopup, onClose, editRentalId, onSaved }: Pr
         garment_id: item.prenda.id,
         precio: parseInt(item.precio) || 0,
         tipo: item.tipo,
+        cantidad: item.prenda.categoria === 'Accesorios' ? (parseInt(item.cantidad) || 1) : 1,
       }))
 
       const { error: itemsError } = await supabase
@@ -616,13 +691,20 @@ export default function Alquiler({ inPopup, onClose, editRentalId, onSaved }: Pr
         .update({ abono: totalAbonado })
         .eq('id', rental.id)
 
-      // Actualizar estado de garments
+      // Actualizar estado de garments (accesorios NO usan estado, van por stock)
       const alquilerGarmentIds = selectedGarments
-        .filter(item => item.tipo === 'alquiler')
+        .filter(item => item.tipo === 'alquiler' && item.prenda.categoria !== 'Accesorios')
         .map(item => item.prenda.id)
       const ventaGarmentIds = selectedGarments
-        .filter(item => item.tipo === 'venta')
+        .filter(item => item.tipo === 'venta' && item.prenda.categoria !== 'Accesorios')
         .map(item => item.prenda.id)
+
+      // Descontar stock de los accesorios vendidos
+      for (const item of selectedGarments) {
+        if (item.prenda.categoria === 'Accesorios' && item.tipo === 'venta') {
+          await ajustarStock(item.prenda.id, -(parseInt(item.cantidad) || 1))
+        }
+      }
 
       if (alquilerGarmentIds.length > 0) {
         await supabase
@@ -1214,6 +1296,32 @@ export default function Alquiler({ inPopup, onClose, editRentalId, onSaved }: Pr
                     VTA
                   </button>
                 </div>
+                {/* Cantidad — solo accesorios */}
+                {item.prenda.categoria === 'Accesorios' && (
+                  <div
+                    className="flex items-center rounded-[8px] overflow-hidden shrink-0"
+                    style={{ border: '1px solid var(--accent-border)' }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => updateGarmentCantidad(index, -1)}
+                      className="w-7 h-7 flex items-center justify-center text-sm font-bold text-text-secondary hover:brightness-125"
+                      aria-label="Restar cantidad"
+                    >
+                      −
+                    </button>
+                    <span className="w-7 text-center text-xs font-bold text-text-primary">{item.cantidad}</span>
+                    <button
+                      type="button"
+                      onClick={() => updateGarmentCantidad(index, 1)}
+                      className="w-7 h-7 flex items-center justify-center text-sm font-bold text-text-secondary hover:brightness-125 disabled:opacity-30"
+                      disabled={(parseInt(item.cantidad) || 1) >= (item.prenda.cantidad ?? 1)}
+                      aria-label="Sumar cantidad"
+                    >
+                      +
+                    </button>
+                  </div>
+                )}
                 {/* Precio de esta prenda */}
                 <div className="relative shrink-0 w-[104px]">
                   <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-text-tertiary pointer-events-none">$</span>

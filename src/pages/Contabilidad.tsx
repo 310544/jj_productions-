@@ -53,17 +53,20 @@ export default function Contabilidad() {
     const inicioAnio = `${anio}-01-01`
     const finAnio = `${anio}-12-31`
 
-    const [{ data: rentals }, { data: gs }] = await Promise.all([
-      supabase.from('rentals').select('monto_total, fecha_inicio')
-        .gte('fecha_inicio', inicioAnio).lte('fecha_inicio', finAnio),
+    // Ingresos = dinero REALMENTE recibido (caja). Cada abono se cuenta en el
+    // mes en que entró (pagos.fecha), no cuando se facturó. Así, si un alquiler
+    // se cancela o el cliente paga el mes siguiente, la plata cae en su mes real.
+    const [{ data: pagos }, { data: gs }] = await Promise.all([
+      supabase.from('pagos').select('monto, fecha')
+        .gte('fecha', inicioAnio).lte('fecha', finAnio),
       supabase.from('gastos').select('monto, fecha')
         .gte('fecha', inicioAnio).lte('fecha', finAnio),
     ])
 
     const datos: DatoMes[] = MESES.map((m) => ({ mes: m, ingresos: 0, gastos: 0 }))
-    for (const r of rentals || []) {
-      const idx = parseInt((r as any).fecha_inicio.slice(5, 7), 10) - 1
-      if (idx >= 0 && idx < 12) datos[idx].ingresos += (r as any).monto_total || 0
+    for (const p of pagos || []) {
+      const idx = parseInt((p as any).fecha.slice(5, 7), 10) - 1
+      if (idx >= 0 && idx < 12) datos[idx].ingresos += (p as any).monto || 0
     }
     for (const g of gs || []) {
       const idx = parseInt((g as any).fecha.slice(5, 7), 10) - 1
@@ -174,7 +177,7 @@ export default function Contabilidad() {
         <StatCard
           label="Ingresos"
           value={formatCOPFull(ingresosMes)}
-          sub={`${MESES_FULL[mes]}`}
+          sub={`Recibido en ${MESES_FULL[mes]}`}
           icon={<TrendUp size={24} weight="light" />}
           accent="#15A36A"
         />
