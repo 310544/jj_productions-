@@ -29,6 +29,11 @@ function formatCOPFull(n: number) {
   return n.toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 })
 }
 
+// Fecha local 'YYYY-MM-DD' (sin desfase de zona horaria)
+function isoLocal(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 function monthRange(anio: number, m: number) {
   const inicio = `${anio}-${String(m + 1).padStart(2, '0')}-01`
   const lastDay = new Date(anio, m + 1, 0).getDate()
@@ -38,15 +43,18 @@ function monthRange(anio: number, m: number) {
 
 export default function Contabilidad() {
   const hoy = new Date()
+  const [vista, setVista] = useState<'dia' | 'mes'>('dia')
   const [mes, setMes] = useState(hoy.getMonth())
   const [anio, setAnio] = useState(hoy.getFullYear())
   const [serie, setSerie] = useState<DatoMes[]>([])
   const [gastos, setGastos] = useState<Gasto[]>([])
+  const [nominaMes, setNominaMes] = useState(0)
   const [loading, setLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
+  const [refreshTick, setRefreshTick] = useState(0)
 
   useEffect(() => { fetchAnio() }, [anio])
-  useEffect(() => { fetchGastosMes() }, [mes, anio])
+  useEffect(() => { fetchGastosMes() }, [mes, anio, refreshTick])
 
   async function fetchAnio() {
     setLoading(true)
@@ -56,10 +64,15 @@ export default function Contabilidad() {
     // Ingresos = dinero REALMENTE recibido (caja). Cada abono se cuenta en el
     // mes en que entró (pagos.fecha), no cuando se facturó. Así, si un alquiler
     // se cancela o el cliente paga el mes siguiente, la plata cae en su mes real.
-    const [{ data: pagos }, { data: gs }] = await Promise.all([
+    // Gastos = gastos manuales + nómina (pago de empleadas en jornadas cerradas).
+    const [{ data: pagos }, { data: encPagos }, { data: gs }, { data: jor }] = await Promise.all([
       supabase.from('pagos').select('monto, fecha')
         .gte('fecha', inicioAnio).lte('fecha', finAnio),
+      supabase.from('encargo_pagos').select('monto, fecha')
+        .gte('fecha', inicioAnio).lte('fecha', finAnio),
       supabase.from('gastos').select('monto, fecha')
+        .gte('fecha', inicioAnio).lte('fecha', finAnio),
+      supabase.from('jornadas').select('pago, fecha').eq('estado', 'cerrado')
         .gte('fecha', inicioAnio).lte('fecha', finAnio),
     ])
 
@@ -68,9 +81,17 @@ export default function Contabilidad() {
       const idx = parseInt((p as any).fecha.slice(5, 7), 10) - 1
       if (idx >= 0 && idx < 12) datos[idx].ingresos += (p as any).monto || 0
     }
+    for (const p of encPagos || []) {
+      const idx = parseInt((p as any).fecha.slice(5, 7), 10) - 1
+      if (idx >= 0 && idx < 12) datos[idx].ingresos += Number((p as any).monto) || 0
+    }
     for (const g of gs || []) {
       const idx = parseInt((g as any).fecha.slice(5, 7), 10) - 1
       if (idx >= 0 && idx < 12) datos[idx].gastos += (g as any).monto || 0
+    }
+    for (const j of jor || []) {
+      const idx = parseInt((j as any).fecha.slice(5, 7), 10) - 1
+      if (idx >= 0 && idx < 12) datos[idx].gastos += Number((j as any).pago) || 0
     }
     setSerie(datos)
     setLoading(false)
@@ -78,11 +99,15 @@ export default function Contabilidad() {
 
   async function fetchGastosMes() {
     const { inicio, fin } = monthRange(anio, mes)
-    const { data } = await supabase
-      .from('gastos').select('*')
-      .gte('fecha', inicio).lte('fecha', fin)
-      .order('fecha', { ascending: false })
+    const [{ data }, { data: jor }] = await Promise.all([
+      supabase.from('gastos').select('*')
+        .gte('fecha', inicio).lte('fecha', fin)
+        .order('fecha', { ascending: false }),
+      supabase.from('jornadas').select('pago').eq('estado', 'cerrado')
+        .gte('fecha', inicio).lte('fecha', fin),
+    ])
     setGastos((data as Gasto[]) || [])
+    setNominaMes((jor || []).reduce((s, j) => s + (Number((j as any).pago) || 0), 0))
   }
 
   async function eliminarGasto(id: number) {
@@ -121,22 +146,45 @@ export default function Contabilidad() {
           <h1 className="text-2xl font-bold text-text-primary tracking-tight">Contabilidad</h1>
         </div>
 
-        <div className="flex items-center gap-2">
-          {/* Selector de mes compacto */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Toggle Día / Mes */}
           <div
-            className="flex items-center rounded-full overflow-hidden"
+            className="flex items-center rounded-full p-0.5"
             style={{ background: 'var(--surface)', border: '1px solid rgba(0,0,0,0.08)' }}
           >
-            <button onClick={prevMes} className="w-9 h-9 flex items-center justify-center hover:bg-black/5 transition-all">
-              <CaretLeft size={16} weight="bold" />
-            </button>
-            <span className="px-2 text-sm font-bold text-text-primary min-w-[96px] text-center">
-              {MESES_FULL[mes].slice(0, 3)} {anio}
-            </span>
-            <button onClick={nextMes} disabled={esMesActual} className="w-9 h-9 flex items-center justify-center hover:bg-black/5 transition-all disabled:opacity-25">
-              <CaretRight size={16} weight="bold" />
-            </button>
+            {(['dia', 'mes'] as const).map((v) => (
+              <button
+                key={v}
+                onClick={() => setVista(v)}
+                className="px-4 h-8 rounded-full text-sm font-semibold transition-all"
+                style={
+                  vista === v
+                    ? { background: 'linear-gradient(135deg, #D4AF37 0%, #A8823A 100%)', color: '#1C1A16' }
+                    : { color: 'var(--text-secondary)' }
+                }
+              >
+                {v === 'dia' ? 'Día' : 'Mes'}
+              </button>
+            ))}
           </div>
+
+          {/* Selector de mes compacto (solo en vista Mes) */}
+          {vista === 'mes' && (
+            <div
+              className="flex items-center rounded-full overflow-hidden"
+              style={{ background: 'var(--surface)', border: '1px solid rgba(0,0,0,0.08)' }}
+            >
+              <button onClick={prevMes} className="w-9 h-9 flex items-center justify-center hover:bg-black/5 transition-all">
+                <CaretLeft size={16} weight="bold" />
+              </button>
+              <span className="px-2 text-sm font-bold text-text-primary min-w-[96px] text-center">
+                {MESES_FULL[mes].slice(0, 3)} {anio}
+              </span>
+              <button onClick={nextMes} disabled={esMesActual} className="w-9 h-9 flex items-center justify-center hover:bg-black/5 transition-all disabled:opacity-25">
+                <CaretRight size={16} weight="bold" />
+              </button>
+            </div>
+          )}
 
           <button
             onClick={() => setModalOpen(true)}
@@ -147,6 +195,13 @@ export default function Contabilidad() {
           </button>
         </div>
       </div>
+
+      {/* ─────────────  VISTA DÍA  ───────────── */}
+      {vista === 'dia' && <VistaDia refreshTick={refreshTick} />}
+
+      {/* ─────────────  VISTA MES  ───────────── */}
+      {vista === 'mes' && (
+      <>
 
       {/* Fila superior: Balance hero + tarjetas */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
@@ -266,7 +321,7 @@ export default function Contabilidad() {
           </button>
         </div>
 
-        {gastos.length === 0 ? (
+        {gastos.length === 0 && nominaMes === 0 ? (
           <div className="rounded-[16px] py-12 text-center" style={{ background: 'var(--surface)', border: '1px solid rgba(0,0,0,0.07)', boxShadow: '0 10px 30px rgba(28,20,8,0.10), 0 2px 6px rgba(0,0,0,0.04)' }}>
             <Receipt size={32} weight="light" className="mx-auto mb-2 opacity-25" />
             <p className="text-sm font-medium text-text-secondary">Sin gastos en {MESES_FULL[mes]}</p>
@@ -274,6 +329,22 @@ export default function Contabilidad() {
           </div>
         ) : (
           <div className="rounded-[16px] overflow-hidden" style={{ border: '1px solid rgba(0,0,0,0.07)', boxShadow: '0 10px 30px rgba(28,20,8,0.10), 0 2px 6px rgba(0,0,0,0.04)' }}>
+            {/* Fila de nómina (suma de pagos a empleadas del mes) */}
+            {nominaMes > 0 && (
+              <div
+                className="flex items-center gap-3 px-4 py-3.5"
+                style={{ background: 'var(--surface)', borderBottom: gastos.length > 0 ? '1px solid rgba(0,0,0,0.05)' : 'none' }}
+              >
+                <span className="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ background: 'rgba(139,105,20,0.10)' }}>
+                  <Wallet size={16} weight="light" style={{ color: '#8B6914' }} />
+                </span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-text-primary truncate">Nómina empleadas</p>
+                  <p className="text-xs text-text-tertiary">Pagos del módulo de Asistencia · {MESES_FULL[mes]}</p>
+                </div>
+                <p className="text-sm font-bold shrink-0" style={{ color: '#DC2626' }}>−{formatCOPFull(nominaMes)}</p>
+              </div>
+            )}
             {gastos.map((g, i) => (
               <div
                 key={g.id}
@@ -300,13 +371,233 @@ export default function Contabilidad() {
           </div>
         )}
       </div>
+      </>
+      )}
 
       <GastoModal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
-        defaultFecha={monthRange(anio, mes).inicio}
-        onSaved={() => { setModalOpen(false); fetchGastosMes(); fetchAnio() }}
+        defaultFecha={isoLocal(new Date())}
+        onSaved={() => { setModalOpen(false); fetchGastosMes(); fetchAnio(); setRefreshTick((t) => t + 1) }}
       />
+    </div>
+  )
+}
+
+interface IngresoDia {
+  id: number; monto: number; codigo: string | null; cliente: string | null
+  prendas: { nombre: string; tipo: string }[]
+}
+interface NominaDia { id: number; monto: number; nombre: string }
+
+// Vista del cierre del día: ingresos vs gastos (incluida la nómina) con detalle.
+function VistaDia({ refreshTick }: { refreshTick: number }) {
+  const [dia, setDia] = useState(() => isoLocal(new Date()))
+  const [ingresos, setIngresos] = useState<IngresoDia[]>([])
+  const [gastos, setGastos] = useState<Gasto[]>([])
+  const [nomina, setNomina] = useState<NominaDia[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    let activo = true
+    setLoading(true)
+    Promise.all([
+      // Ingresos = abonos/pagos recibidos ese día (con su factura, cliente y prendas)
+      supabase.from('pagos')
+        .select('id, monto, rentals(codigo, customers(nombre), rental_items(tipo, garments(nombre)))')
+        .eq('fecha', dia),
+      // Gastos manuales del día
+      supabase.from('gastos').select('*').eq('fecha', dia).order('id', { ascending: false }),
+      // Nómina = pago de empleadas en jornadas cerradas ese día
+      supabase.from('jornadas').select('id, pago, empleadas(nombre)').eq('fecha', dia).eq('estado', 'cerrado'),
+      // Abonos de trajes a la medida (encargos) recibidos ese día
+      supabase.from('encargo_pagos').select('id, monto, encargos(codigo, cliente_nombre, descripcion)').eq('fecha', dia),
+    ]).then(([p, g, j, ep]) => {
+      if (!activo) return
+      const ingAlquiler: IngresoDia[] = ((p.data as any[]) || []).map((r) => ({
+        id: r.id, monto: Number(r.monto) || 0,
+        codigo: r.rentals?.codigo ?? null,
+        cliente: r.rentals?.customers?.nombre ?? null,
+        prendas: (r.rentals?.rental_items || []).map((it: any) => ({
+          nombre: it.garments?.nombre ?? 'Prenda',
+          tipo: it.tipo ?? 'alquiler',
+        })),
+      }))
+      const ingEncargos: IngresoDia[] = ((ep.data as any[]) || []).map((r) => ({
+        id: 1_000_000_000 + r.id, // evitar choque de keys con pagos
+        monto: Number(r.monto) || 0,
+        codigo: r.encargos?.codigo ?? null,
+        cliente: r.encargos?.cliente_nombre ?? null,
+        prendas: r.encargos?.descripcion ? [{ nombre: r.encargos.descripcion, tipo: 'medida' }] : [],
+      }))
+      setIngresos([...ingAlquiler, ...ingEncargos])
+      setGastos((g.data as Gasto[]) || [])
+      setNomina(((j.data as any[]) || []).filter((r) => r.pago != null).map((r) => ({
+        id: r.id, monto: Number(r.pago) || 0, nombre: r.empleadas?.nombre ?? '—',
+      })))
+      setLoading(false)
+    })
+    return () => { activo = false }
+  }, [dia, refreshTick])
+
+  const totalIngresos = ingresos.reduce((s, i) => s + i.monto, 0)
+  const totalNomina = nomina.reduce((s, n) => s + n.monto, 0)
+  const totalGastos = gastos.reduce((s, g) => s + g.monto, 0) + totalNomina
+  const balance = totalIngresos - totalGastos
+
+  const hoyISO = isoLocal(new Date())
+  const esHoy = dia === hoyISO
+  const cambiarDia = (n: number) =>
+    setDia((prev) => {
+      const d = new Date(prev + 'T00:00:00')
+      d.setDate(d.getDate() + n)
+      const nuevo = isoLocal(d)
+      return nuevo > hoyISO ? prev : nuevo // nunca pasar de hoy
+    })
+  const fechaLarga = new Date(dia + 'T00:00:00').toLocaleDateString('es-CO', {
+    weekday: 'long', day: 'numeric', month: 'long',
+  })
+
+  return (
+    <div className="space-y-5">
+      {/* Selector de día */}
+      <div className="flex items-center justify-center gap-2">
+        <button onClick={() => cambiarDia(-1)} className="w-10 h-10 flex items-center justify-center rounded-full transition-all active:scale-95" style={{ background: 'var(--surface)', border: '1px solid rgba(0,0,0,0.08)' }}>
+          <CaretLeft size={18} weight="bold" />
+        </button>
+        <div className="px-5 py-2 rounded-full text-center min-w-[200px]" style={{ background: 'var(--surface)', border: '1px solid rgba(0,0,0,0.08)' }}>
+          <p className="text-sm font-bold text-text-primary capitalize leading-none">{esHoy ? 'Hoy' : fechaLarga}</p>
+          {esHoy && <p className="text-[10px] text-text-tertiary capitalize mt-0.5">{fechaLarga}</p>}
+        </div>
+        <button onClick={() => cambiarDia(1)} disabled={esHoy} className="w-10 h-10 flex items-center justify-center rounded-full transition-all active:scale-95 disabled:opacity-25" style={{ background: 'var(--surface)', border: '1px solid rgba(0,0,0,0.08)' }}>
+          <CaretRight size={18} weight="bold" />
+        </button>
+      </div>
+
+      {/* Resumen del día */}
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+        <ResumenDia label="Ingresó" value={formatCOPFull(totalIngresos)} accent="#15A36A" icon={<TrendUp size={20} weight="bold" />} />
+        <ResumenDia label="Se gastó" value={formatCOPFull(totalGastos)} accent="#DC2626" icon={<TrendDown size={20} weight="bold" />} />
+        <div
+          className="col-span-2 md:col-span-1 rounded-[18px] p-4 flex items-center justify-between"
+          style={{ background: 'linear-gradient(150deg, #211C15 0%, #16130E 100%)', boxShadow: '0 6px 20px rgba(28,20,8,0.20)' }}
+        >
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'rgba(255,255,255,0.55)' }}>Balance del día</p>
+            <p className="text-2xl font-bold tracking-tight mt-1" style={{ color: balance >= 0 ? '#7BE0A3' : '#FF9B9B' }}>{formatCOPFull(balance)}</p>
+          </div>
+          <Scales size={26} weight="light" color="#E8C766" />
+        </div>
+      </div>
+
+      {loading ? (
+        <p className="text-center py-10 text-sm text-text-tertiary">Cargando…</p>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* INGRESOS */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-semibold text-text-tertiary uppercase tracking-wider">Ingresos del día</p>
+              <p className="text-sm font-bold" style={{ color: '#15A36A' }}>{formatCOPFull(totalIngresos)}</p>
+            </div>
+            {ingresos.length === 0 ? (
+              <Vacio texto="No entró dinero este día" />
+            ) : (
+              <div className="rounded-[16px] overflow-hidden" style={{ border: '1px solid rgba(0,0,0,0.07)' }}>
+                {ingresos.map((it, i) => (
+                  <Fila
+                    key={it.id}
+                    icon={<TrendUp size={16} weight="light" style={{ color: '#15A36A' }} />}
+                    iconBg="rgba(21,163,106,0.10)"
+                    titulo={it.codigo ? `Abono · ${it.codigo}` : 'Abono'}
+                    sub={it.cliente ?? 'Cliente'}
+                    extra={it.prendas.length > 0
+                      ? it.prendas.map((p) => p.tipo === 'venta' ? `${p.nombre} (venta)` : p.nombre).join(' · ')
+                      : undefined}
+                    monto={`+${formatCOPFull(it.monto)}`}
+                    montoColor="#15A36A"
+                    ultimo={i === ingresos.length - 1}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* GASTOS */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-semibold text-text-tertiary uppercase tracking-wider">Gastos del día</p>
+              <p className="text-sm font-bold" style={{ color: '#DC2626' }}>{formatCOPFull(totalGastos)}</p>
+            </div>
+            {gastos.length === 0 && nomina.length === 0 ? (
+              <Vacio texto="No hubo gastos este día" />
+            ) : (
+              <div className="rounded-[16px] overflow-hidden" style={{ border: '1px solid rgba(0,0,0,0.07)' }}>
+                {nomina.map((n, i) => (
+                  <Fila
+                    key={`n${n.id}`}
+                    icon={<Wallet size={16} weight="light" style={{ color: '#8B6914' }} />}
+                    iconBg="rgba(139,105,20,0.10)"
+                    titulo={`Nómina · ${n.nombre}`}
+                    sub="Pago de empleada"
+                    monto={`−${formatCOPFull(n.monto)}`}
+                    montoColor="#DC2626"
+                    ultimo={i === nomina.length - 1 && gastos.length === 0}
+                  />
+                ))}
+                {gastos.map((g, i) => (
+                  <Fila
+                    key={`g${g.id}`}
+                    icon={<TrendDown size={16} weight="light" style={{ color: '#DC2626' }} />}
+                    iconBg="rgba(220,38,38,0.08)"
+                    titulo={g.concepto}
+                    sub={g.categoria ?? 'Gasto'}
+                    monto={`−${formatCOPFull(g.monto)}`}
+                    montoColor="#DC2626"
+                    ultimo={i === gastos.length - 1}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ResumenDia({ label, value, accent, icon }: { label: string; value: string; accent: string; icon: React.ReactNode }) {
+  return (
+    <div className="rounded-[18px] p-4" style={{ background: `linear-gradient(150deg, ${accent}1F 0%, transparent 60%), var(--surface)`, border: `1px solid ${accent}2E` }}>
+      <span className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: `${accent}18`, color: accent }}>{icon}</span>
+      <p className="text-[11px] font-semibold uppercase tracking-wider text-text-secondary mt-3">{label}</p>
+      <p className="text-xl font-bold text-text-primary leading-tight mt-0.5">{value}</p>
+    </div>
+  )
+}
+
+function Fila({ icon, iconBg, titulo, sub, extra, monto, montoColor, ultimo }: {
+  icon: React.ReactNode; iconBg: string; titulo: string; sub: string; extra?: string; monto: string; montoColor: string; ultimo: boolean
+}) {
+  return (
+    <div className="flex items-center gap-3 px-4 py-3" style={{ background: 'var(--surface)', borderBottom: ultimo ? 'none' : '1px solid rgba(0,0,0,0.05)' }}>
+      <span className="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ background: iconBg }}>{icon}</span>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold text-text-primary truncate">{titulo}</p>
+        <p className="text-xs text-text-tertiary truncate">{sub}</p>
+        {extra && (
+          <p className="text-xs font-medium truncate mt-0.5" style={{ color: '#8B6914' }}>{extra}</p>
+        )}
+      </div>
+      <p className="text-sm font-bold shrink-0" style={{ color: montoColor }}>{monto}</p>
+    </div>
+  )
+}
+
+function Vacio({ texto }: { texto: string }) {
+  return (
+    <div className="rounded-[16px] py-8 text-center" style={{ background: 'var(--surface)', border: '1px solid rgba(0,0,0,0.07)' }}>
+      <p className="text-sm text-text-tertiary">{texto}</p>
     </div>
   )
 }

@@ -10,6 +10,8 @@ const DetallePrenda = lazy(() => import('./pages/DetallePrenda'))
 const Alquiler = lazy(() => import('./pages/Alquiler'))
 const Historial = lazy(() => import('./pages/Historial'))
 const Contabilidad = lazy(() => import('./pages/Contabilidad'))
+const Asistencia = lazy(() => import('./pages/Asistencia'))
+const Encargos = lazy(() => import('./pages/Encargos'))
 
 export default function App() {
   return (
@@ -22,6 +24,8 @@ export default function App() {
             <Route path="/prenda/:codigo" element={<DetallePrenda />} />
             <Route path="/alquiler" element={<Alquiler />} />
             <Route path="/historial" element={<Historial />} />
+            <Route path="/asistencia" element={<Asistencia />} />
+            <Route path="/encargos" element={<Encargos />} />
             <Route path="/contabilidad" element={<Contabilidad />} />
           </Routes>
         </Suspense>

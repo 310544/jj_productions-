@@ -12,8 +12,11 @@ import {
   TrendDown,
   Sun,
   Moon,
+  UsersThree,
+  Scissors,
 } from '@phosphor-icons/react'
 import BackgroundElements from './BackgroundElements'
+import { supabase } from '../lib/supabase'
 
 // Modales que solo aparecen al tocar un botón. Con carga diferida, su código
 // (y librerías pesadas como recharts, que arrastra Contabilidad/GastoModal)
@@ -35,9 +38,34 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { label: 'Inventario', icon: <SquaresFour size={20} weight="light" />, path: '/' },
+  { label: 'A la medida', icon: <Scissors size={20} weight="light" />, path: '/encargos' },
+  { label: 'Asistencia', icon: <UsersThree size={20} weight="light" />, path: '/asistencia' },
   { label: 'Historial', icon: <ClockCounterClockwise size={20} weight="light" />, path: '/historial' },
   { label: 'Contabilidad', icon: <ChartBar size={20} weight="light" />, path: '/contabilidad' },
 ]
+
+// Cuenta de encargos (trajes a la medida) próximos a entregar (≤7 días) o atrasados.
+function useAvisosEncargos() {
+  const [count, setCount] = useState(0)
+  useEffect(() => {
+    const cargar = () => {
+      const hoy = new Date()
+      const limite = new Date(hoy)
+      limite.setDate(hoy.getDate() + 7)
+      const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+      supabase
+        .from('encargos')
+        .select('id', { count: 'exact', head: true })
+        .in('estado', ['pendiente', 'listo'])
+        .lte('fecha_entrega', iso(limite))
+        .then(({ count }) => setCount(count ?? 0))
+    }
+    cargar()
+    const t = setInterval(cargar, 5 * 60_000) // refresca cada 5 min
+    return () => clearInterval(t)
+  }, [])
+  return count
+}
 
 function ModalWrapper({
   open,
@@ -114,6 +142,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   }, [theme])
 
   const toggleTheme = () => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))
+  const avisosEncargos = useAvisosEncargos()
 
   function handleNav(item: NavItem) {
     if (item.path === '/contabilidad') { setPinOpen(true); return }
@@ -170,6 +199,14 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             >
               {item.icon}
               {item.label}
+              {item.path === '/encargos' && avisosEncargos > 0 && (
+                <span
+                  className="ml-auto text-[10px] font-bold px-1.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full"
+                  style={{ background: '#c0392b', color: '#fff' }}
+                >
+                  {avisosEncargos}
+                </span>
+              )}
             </button>
           ))}
         </nav>
@@ -269,7 +306,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 1.25rem)' }}
       >
         <div
-          className="flex items-center gap-1 px-2.5 py-2 rounded-full pointer-events-auto backdrop-blur-xl"
+          className="flex items-center gap-0.5 px-2 py-2 rounded-full pointer-events-auto backdrop-blur-xl max-w-[calc(100vw-1rem)]"
           style={{
             background: 'rgba(255,255,255,0.72)',
             border: '1px solid rgba(255,255,255,0.6)',
@@ -282,6 +319,21 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             icon={<SquaresFour size={20} weight="light" />}
             active={location.pathname === '/'}
             onClick={() => navigate('/')}
+          />
+
+          <MobileNavBtn
+            label="Medida"
+            icon={<Scissors size={20} weight="light" />}
+            active={location.pathname === '/encargos'}
+            onClick={() => navigate('/encargos')}
+            badge={avisosEncargos}
+          />
+
+          <MobileNavBtn
+            label="Asist."
+            icon={<UsersThree size={20} weight="light" />}
+            active={location.pathname === '/asistencia'}
+            onClick={() => navigate('/asistencia')}
           />
 
           <MobileNavBtn
@@ -499,16 +551,18 @@ function MobileNavBtn({
   icon,
   active,
   onClick,
+  badge = 0,
 }: {
   label: string
   icon: React.ReactNode
   active: boolean
   onClick: () => void
+  badge?: number
 }) {
   return (
     <button
       onClick={onClick}
-      className="flex flex-col items-center justify-center gap-0.5 px-3 py-2 rounded-full transition-all active:scale-95 min-w-[52px]"
+      className="relative flex flex-col items-center justify-center gap-0.5 px-2 py-2 rounded-full transition-all active:scale-95 min-w-[46px]"
       style={{
         background: active ? 'rgba(255,255,255,0.55)' : 'transparent',
         border: active ? '1px solid rgba(255,255,255,0.75)' : '1px solid transparent',
@@ -520,6 +574,14 @@ function MobileNavBtn({
     >
       {icon}
       <span className="text-[9px] font-semibold tracking-wide">{label}</span>
+      {badge > 0 && (
+        <span
+          className="absolute top-0.5 right-1 text-[8px] font-bold min-w-[15px] h-[15px] px-1 flex items-center justify-center rounded-full"
+          style={{ background: '#c0392b', color: '#fff' }}
+        >
+          {badge}
+        </span>
+      )}
     </button>
   )
 }

@@ -64,3 +64,66 @@ export interface Gasto {
   monto: number
   fecha: string
 }
+
+// ── Asistencia / Nómina diaria ──
+
+export interface Empleada {
+  id: number
+  nombre: string
+  pin: string
+  activo: boolean
+}
+
+export type EstadoJornada = 'trabajando_am' | 'almuerzo' | 'trabajando_pm' | 'cerrado'
+
+export interface Jornada {
+  id: number
+  empleada_id: number
+  fecha: string
+  hora_entrada: string | null
+  inicio_almuerzo: string | null
+  fin_almuerzo: string | null
+  hora_salida: string | null
+  estado: EstadoJornada
+  minutos_trabajados: number | null
+  pago: number | null
+  empleadas?: { nombre: string } // join opcional para reportes
+}
+
+// ── Trajes a la medida (Encargos) ──
+
+export type EstadoEncargo = 'pendiente' | 'listo' | 'entregado' | 'cancelado'
+
+export interface EncargoPago {
+  id: number
+  encargo_id: number
+  monto: number
+  fecha: string
+}
+
+export interface Encargo {
+  id: number
+  codigo: string
+  cliente_nombre: string
+  cliente_telefono?: string
+  cliente_cedula?: string
+  descripcion: string
+  notas?: string
+  precio: number
+  fecha_pedido: string
+  fecha_entrega: string
+  estado: EstadoEncargo
+  encargo_pagos?: EncargoPago[] // join opcional
+}
+
+// Lo que devuelve la función registrar_marca() de Supabase
+export interface ResultadoMarca {
+  ok: boolean
+  error?: string
+  accion?: 'entrada' | 'inicio_almuerzo' | 'fin_almuerzo' | 'salida'
+  empleada?: string
+  hora?: string
+  minutos?: number
+  almuerzo_min?: number
+  pago?: number
+}
