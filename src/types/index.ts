@@ -113,7 +113,21 @@ export interface Encargo {
   fecha_pedido: string
   fecha_entrega: string
   estado: EstadoEncargo
+  aviso_5dias_enviado_at?: string | null // recordatorio "faltan 5 días" ya enviado al sastre
+  aviso_1dia_enviado_at?: string | null  // recordatorio "se entrega mañana" ya enviado al sastre
   encargo_pagos?: EncargoPago[] // join opcional
+}
+
+// Ajustes del sastre (una sola fila, id = 1). Editable desde el tab "A la medida".
+export interface ConfigEncargos {
+  id: number
+  sastre_nombre?: string | null
+  sastre_telefono?: string | null   // WhatsApp: indicativo + número, solo dígitos
+  callmebot_apikey?: string | null  // clave de CallMeBot para ese número
+  dias_aviso_1: number              // primer aviso: N días antes (default 5)
+  dias_aviso_2: number              // segundo aviso: N días antes (default 1)
+  test_solicitado_at?: string | null // el botón "Prueba" lo marca; el bot lo recoge y envía
+  updated_at?: string
 }
 
 // Lo que devuelve la función registrar_marca() de Supabase

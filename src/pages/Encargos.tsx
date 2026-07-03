@@ -3,10 +3,11 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   Plus, X, CalendarBlank, WhatsappLogo, Trash, CheckCircle, Bell,
   Warning, Scissors, ClockCountdown, CurrencyDollar, EnvelopeSimple, PencilSimple,
+  GearSix, PaperPlaneRight,
 } from '@phosphor-icons/react'
 import { supabase } from '../lib/supabase'
 import { compartirComprobante, enviarComprobanteCorreo } from '../lib/comprobante'
-import type { Encargo, EstadoEncargo } from '../types'
+import type { Encargo, EstadoEncargo, ConfigEncargos } from '../types'
 
 const money = (n: number) =>
   n.toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 })
@@ -66,16 +67,13 @@ function DiasBadge({ dias }: { dias: number }) {
   )
 }
 
-const DEMO_ENC: Encargo[] = [
-  { id: 1, codigo: 'TM 005', cliente_nombre: 'Diego Mora', cliente_telefono: '3105551234', descripcion: 'Frac gris para boda', notas: 'Pecho 98, cintura 84', precio: 950000, fecha_pedido: '2026-06-05', fecha_entrega: '2026-06-12', estado: 'pendiente', encargo_pagos: [{ id: 1, encargo_id: 1, monto: 300000, fecha: '2026-06-05' }] },
-]
-
 export default function Encargos() {
-  const [encargos, setEncargos] = useState<Encargo[]>(DEMO_ENC)
-  const [loading, setLoading] = useState(false)
+  const [encargos, setEncargos] = useState<Encargo[]>([])
+  const [loading, setLoading] = useState(true)
   const [nuevoOpen, setNuevoOpen] = useState(false)
   const [detalle, setDetalle] = useState<Encargo | null>(null)
   const [verEntregados, setVerEntregados] = useState(false)
+  const [configOpen, setConfigOpen] = useState(false)
 
   const cargar = useCallback(async () => {
     const { data } = await supabase
@@ -86,7 +84,7 @@ export default function Encargos() {
     setLoading(false)
   }, [])
 
-  useEffect(() => { /* cargar() TEMP */ }, [cargar])
+  useEffect(() => { cargar() }, [cargar])
 
   // Avisos: activos que se entregan en ≤7 días o ya están atrasados
   const avisos = encargos
@@ -109,13 +107,24 @@ export default function Encargos() {
             Trajes mandados a hacer, con su entrega y abonos
           </p>
         </div>
-        <button
-          onClick={() => setNuevoOpen(true)}
-          className="hidden md:flex items-center gap-2 px-4 py-2.5 rounded-[12px] text-sm font-semibold transition-all active:scale-95"
-          style={{ background: 'linear-gradient(135deg, #D4AF37 0%, #A8823A 100%)', color: '#fff', boxShadow: '0 4px 16px rgba(184,134,11,0.30)' }}
-        >
-          <Plus size={18} weight="bold" /> Nuevo encargo
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setConfigOpen(true)}
+            className="flex items-center justify-center w-10 h-10 rounded-[12px] transition-all active:scale-95"
+            style={{ background: 'var(--surface)', border: '1px solid var(--surface-border)', color: 'var(--text-secondary)' }}
+            aria-label="Ajustes del sastre"
+            title="Recordatorio al sastre"
+          >
+            <GearSix size={20} weight="light" />
+          </button>
+          <button
+            onClick={() => setNuevoOpen(true)}
+            className="hidden md:flex items-center gap-2 px-4 py-2.5 rounded-[12px] text-sm font-semibold transition-all active:scale-95"
+            style={{ background: 'linear-gradient(135deg, #D4AF37 0%, #A8823A 100%)', color: '#fff', boxShadow: '0 4px 16px rgba(184,134,11,0.30)' }}
+          >
+            <Plus size={18} weight="bold" /> Nuevo encargo
+          </button>
+        </div>
       </div>
 
       {/* AVISO de próximos a entregar */}
@@ -254,6 +263,7 @@ export default function Encargos() {
       </button>
 
       <AnimatePresence>
+        {configOpen && <SastreConfigModal onClose={() => setConfigOpen(false)} />}
         {nuevoOpen && <EncargoFormModal onClose={() => setNuevoOpen(false)} onSaved={() => { setNuevoOpen(false); cargar() }} />}
         {detalle && (
           <DetalleEncargoModal
@@ -297,6 +307,127 @@ function Modal({ children, onClose }: { children: React.ReactNode; onClose: () =
 
 const inputCls = 'w-full px-3 py-2.5 rounded-[12px] text-sm focus:outline-none'
 const inputStyle = { background: 'var(--main-bg)', border: '1px solid var(--surface-border)', color: 'var(--text-primary)' } as React.CSSProperties
+
+// ============================================
+// Ajustes del sastre (número y días de aviso)
+// ============================================
+function SastreConfigModal({ onClose }: { onClose: () => void }) {
+  const [loading, setLoading] = useState(true)
+  const [nombre, setNombre] = useState('')
+  const [telefono, setTelefono] = useState('')
+  const [dias1, setDias1] = useState('5')
+  const [dias2, setDias2] = useState('1')
+  const [saving, setSaving] = useState(false)
+  const [probando, setProbando] = useState(false)
+  const [msg, setMsg] = useState<{ txt: string; ok: boolean } | null>(null)
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.from('config_encargos').select('*').eq('id', 1).single()
+      if (data) {
+        const c = data as ConfigEncargos
+        setNombre(c.sastre_nombre ?? '')
+        setTelefono(c.sastre_telefono ?? '')
+        setDias1(String(c.dias_aviso_1 ?? 5))
+        setDias2(String(c.dias_aviso_2 ?? 1))
+      }
+      setLoading(false)
+    })()
+  }, [])
+
+  async function guardar() {
+    setSaving(true); setMsg(null)
+    const { error } = await supabase.from('config_encargos').update({
+      sastre_nombre: nombre.trim() || null,
+      sastre_telefono: telefono.trim() || null,
+      dias_aviso_1: Math.max(0, Number(dias1) || 0),
+      dias_aviso_2: Math.max(0, Number(dias2) || 0),
+      updated_at: new Date().toISOString(),
+    }).eq('id', 1)
+    setSaving(false)
+    setMsg(error ? { txt: 'No se pudo guardar. ¿Corriste el SQL?', ok: false } : { txt: 'Guardado ✓', ok: true })
+  }
+
+  // Guarda el número y deja una "solicitud de prueba" que el bot recoge en ~10 seg.
+  async function probar() {
+    if (!telefono.trim()) { setMsg({ txt: 'Primero escribe el número del sastre.', ok: false }); return }
+    setProbando(true); setMsg(null)
+    const { error } = await supabase.from('config_encargos').update({
+      sastre_nombre: nombre.trim() || null,
+      sastre_telefono: telefono.trim() || null,
+      dias_aviso_1: Math.max(0, Number(dias1) || 0),
+      dias_aviso_2: Math.max(0, Number(dias2) || 0),
+      test_solicitado_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }).eq('id', 1)
+    setProbando(false)
+    setMsg(error
+      ? { txt: 'No se pudo. ¿Corriste el SQL nuevo?', ok: false }
+      : { txt: 'Prueba solicitada. Si el bot está prendido, llega en ~10 seg.', ok: true })
+  }
+
+  return (
+    <Modal onClose={onClose}>
+      <h2 className="text-lg font-bold mb-0.5 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+        <GearSix size={20} weight="light" /> Recordatorio al sastre
+      </h2>
+      <p className="text-xs mb-5" style={{ color: 'var(--text-tertiary)' }}>
+        El sistema avisa por WhatsApp a quien hace los trajes cuando se acerca la entrega.
+      </p>
+
+      {loading ? (
+        <p className="text-center py-8 text-sm" style={{ color: 'var(--text-tertiary)' }}>Cargando…</p>
+      ) : (
+        <div className="space-y-3">
+          <input value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Nombre del sastre" className={inputCls} style={inputStyle} />
+
+          <div>
+            <input
+              value={telefono}
+              onChange={(e) => setTelefono(e.target.value.replace(/[^\d]/g, ''))}
+              inputMode="numeric"
+              placeholder="WhatsApp con indicativo (ej. 57300...)"
+              className={inputCls} style={inputStyle}
+            />
+            <p className="text-[11px] mt-1" style={{ color: 'var(--text-tertiary)' }}>
+              Incluye el indicativo del país. Colombia = 57 antes del número.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-semibold" style={{ color: 'var(--text-secondary)' }}>Primer aviso</label>
+              <div className="flex items-center gap-2 mt-1">
+                <input value={dias1} onChange={(e) => setDias1(e.target.value.replace(/[^\d]/g, ''))} inputMode="numeric" className={inputCls} style={inputStyle} />
+                <span className="text-xs shrink-0" style={{ color: 'var(--text-tertiary)' }}>días antes</span>
+              </div>
+            </div>
+            <div>
+              <label className="text-xs font-semibold" style={{ color: 'var(--text-secondary)' }}>Segundo aviso</label>
+              <div className="flex items-center gap-2 mt-1">
+                <input value={dias2} onChange={(e) => setDias2(e.target.value.replace(/[^\d]/g, ''))} inputMode="numeric" className={inputCls} style={inputStyle} />
+                <span className="text-xs shrink-0" style={{ color: 'var(--text-tertiary)' }}>días antes</span>
+              </div>
+            </div>
+          </div>
+
+          {msg && (
+            <p className="text-xs font-medium" style={{ color: msg.ok ? '#1a7f4b' : '#e06b6b' }}>{msg.txt}</p>
+          )}
+
+          <div className="flex gap-2 pt-1">
+            <button onClick={guardar} disabled={saving} className="flex-1 py-3 rounded-[12px] text-sm font-bold transition-all active:scale-[0.98] disabled:opacity-50" style={{ background: 'linear-gradient(135deg, #D4AF37 0%, #A8823A 100%)', color: '#fff' }}>
+              {saving ? 'Guardando…' : 'Guardar'}
+            </button>
+            <button onClick={probar} disabled={probando} className="flex items-center justify-center gap-2 px-4 py-3 rounded-[12px] text-sm font-semibold shrink-0 disabled:opacity-50" style={{ background: 'rgba(37,211,102,0.14)', color: '#1a7f4b' }}>
+              <PaperPlaneRight size={16} weight="bold" /> {probando ? 'Enviando…' : 'Prueba'}
+            </button>
+          </div>
+        </div>
+      )}
+    </Modal>
+  )
+}
 
 // ============================================
 // Crear / Editar encargo (mismo formulario)

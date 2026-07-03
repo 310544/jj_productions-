@@ -13,6 +13,10 @@ dist-ssr
 *.local
 .env
 
+# Nunca subir archivos pesados / comprimidos ni el bot empaquetado
+*.zip
+whatsapp-bot.zip
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
