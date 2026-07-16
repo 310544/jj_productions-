@@ -130,7 +130,7 @@ function accionesDe(j?: Jornada): OpcionMarca[] {
 // día) o dorado suave (salir a almorzar).
 function estiloOpcion(op: OpcionMarca): React.CSSProperties {
   if (op.primaria)
-    return { background: 'linear-gradient(135deg, #D4AF37, #A8823A)', color: '#fff', boxShadow: '0 3px 12px rgba(184,134,11,0.25)' }
+    return { background: '#ffffff', color: '#A8823A', border: '1px solid rgba(201,168,76,0.55)', boxShadow: '0 2px 10px rgba(184,134,11,0.12)' }
   if (op.accion === 'salida')
     return { background: 'rgba(26,127,75,0.12)', color: '#1a7f4b' }
   return { background: 'rgba(201,168,76,0.14)', color: '#8B6914' }

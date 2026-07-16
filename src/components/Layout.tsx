@@ -132,6 +132,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const [popup, setPopup] = useState<Popup>(null)
   const [pinOpen, setPinOpen] = useState(false)
   const [gastoOpen, setGastoOpen] = useState(false)
+  const [actionsOpen, setActionsOpen] = useState(false)
   const [theme, setTheme] = useState<'light' | 'dark'>(
     () => (localStorage.getItem('theme') as 'light' | 'dark') || 'light'
   )
@@ -270,21 +271,23 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
-      {/* Toggle tema — flotante (móvil) */}
-      <button
-        onClick={toggleTheme}
-        className="md:hidden fixed right-4 z-40 w-10 h-10 flex items-center justify-center rounded-full transition-all active:scale-95"
-        style={{
-          top: 'calc(env(safe-area-inset-top) + 0.75rem)',
-          background: 'var(--surface)',
-          border: '1px solid var(--surface-border)',
-          color: 'var(--text-secondary)',
-          boxShadow: '0 4px 14px rgba(0,0,0,0.12)',
-        }}
-        aria-label="Cambiar tema"
-      >
-        {theme === 'dark' ? <Sun size={18} weight="light" /> : <Moon size={18} weight="light" />}
-      </button>
+      {/* Toggle tema — solo en Inicio (móvil), scrollea con la página */}
+      {location.pathname === '/' && (
+        <button
+          onClick={toggleTheme}
+          className="md:hidden absolute right-4 z-40 w-10 h-10 flex items-center justify-center rounded-full transition-all active:scale-95"
+          style={{
+            top: 'calc(env(safe-area-inset-top) + 0.75rem)',
+            background: 'var(--surface)',
+            border: '1px solid var(--surface-border)',
+            color: 'var(--text-secondary)',
+            boxShadow: '0 4px 14px rgba(0,0,0,0.12)',
+          }}
+          aria-label="Cambiar tema"
+        >
+          {theme === 'dark' ? <Sun size={18} weight="light" /> : <Moon size={18} weight="light" />}
+        </button>
+      )}
 
       {/* ── Main content ── */}
       <main
@@ -300,9 +303,51 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </div>
       </main>
 
-      {/* ── Mobile bottom nav ── */}
+      {/* ── Menú de acciones (móvil) — se despliega desde el botón (+) ── */}
+      <AnimatePresence>
+        {actionsOpen && (
+          <>
+            {/* Fondo para cerrar al tocar afuera */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.18 }}
+              className="md:hidden fixed inset-0 z-20"
+              style={{ background: 'rgba(28,25,20,0.30)', backdropFilter: 'blur(2px)', WebkitBackdropFilter: 'blur(2px)' }}
+              onClick={() => setActionsOpen(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 16 }}
+              transition={{ duration: 0.22, ease: [0.25, 0.46, 0.45, 0.94] }}
+              className="md:hidden fixed left-1/2 -translate-x-1/2 z-30 flex flex-col gap-2"
+              style={{ bottom: 'calc(env(safe-area-inset-bottom) + 6.5rem)' }}
+            >
+              <MobileAction
+                label="Nueva Factura"
+                icon={<Receipt size={20} weight="light" />}
+                onClick={() => { setActionsOpen(false); setPopup('alquiler') }}
+              />
+              <MobileAction
+                label="Agregar Prenda"
+                icon={<Plus size={20} weight="light" />}
+                onClick={() => { setActionsOpen(false); setPopup('agregar') }}
+              />
+              <MobileAction
+                label="Agregar Gasto"
+                icon={<TrendDown size={20} weight="light" />}
+                onClick={() => { setActionsOpen(false); setGastoOpen(true) }}
+              />
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* ── Mobile bottom nav — 5 destinos + botón (+) central ── */}
       <div
-        className="fixed bottom-0 left-0 right-0 z-20 flex justify-center pointer-events-none md:hidden"
+        className="fixed bottom-0 left-0 right-0 z-30 flex justify-center pointer-events-none md:hidden"
         style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 1.25rem)' }}
       >
         <div
@@ -336,24 +381,19 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             onClick={() => navigate('/asistencia')}
           />
 
-          <MobileNavBtn
-            label="Factura"
-            icon={<Receipt size={20} weight="light" />}
-            active={false}
-            onClick={() => setPopup('alquiler')}
-          />
-
-          {/* Agregar — center CTA */}
+          {/* Acciones — botón central que despliega el menú */}
           <button
-            onClick={() => setPopup('agregar')}
-            className="mx-1 w-12 h-12 flex flex-col items-center justify-center rounded-full transition-all active:scale-95"
+            onClick={() => setActionsOpen((v) => !v)}
+            className="mx-1 w-12 h-12 flex items-center justify-center rounded-full transition-transform active:scale-95"
             style={{
               background: 'linear-gradient(135deg, #D4AF37 0%, #A8823A 100%)',
               boxShadow: '0 4px 16px rgba(184,134,11,0.40)',
             }}
-            aria-label="Agregar prenda"
+            aria-label="Acciones"
           >
-            <Plus size={22} weight="light" color="#fff" />
+            <motion.span animate={{ rotate: actionsOpen ? 45 : 0 }} transition={{ duration: 0.2 }} className="flex">
+              <Plus size={22} weight="light" color="#fff" />
+            </motion.span>
           </button>
 
           <MobileNavBtn
@@ -543,6 +583,38 @@ function PinModal({
         </motion.div>
       )}
     </AnimatePresence>
+  )
+}
+
+function MobileAction({
+  label,
+  icon,
+  onClick,
+}: {
+  label: string
+  icon: React.ReactNode
+  onClick: () => void
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="flex items-center gap-3 pl-4 pr-5 py-3 rounded-full transition-all active:scale-[0.97] whitespace-nowrap"
+      style={{
+        background: 'var(--surface)',
+        border: '1px solid rgba(201,168,76,0.30)',
+        boxShadow: '0 8px 24px rgba(28,20,8,0.18)',
+      }}
+    >
+      <span
+        className="w-9 h-9 flex items-center justify-center rounded-full shrink-0"
+        style={{ background: 'linear-gradient(135deg, #D4AF37 0%, #A8823A 100%)', color: '#fff' }}
+      >
+        {icon}
+      </span>
+      <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+        {label}
+      </span>
+    </button>
   )
 }
 
