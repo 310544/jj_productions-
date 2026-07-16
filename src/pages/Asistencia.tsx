@@ -130,7 +130,7 @@ function accionesDe(j?: Jornada): OpcionMarca[] {
 // día) o dorado suave (salir a almorzar).
 function estiloOpcion(op: OpcionMarca): React.CSSProperties {
   if (op.primaria)
-    return { background: '#ffffff', color: '#A8823A', border: '1px solid rgba(201,168,76,0.55)', boxShadow: '0 2px 10px rgba(184,134,11,0.12)' }
+    return { background: 'linear-gradient(135deg, #D4AF37, #A8823A)', color: '#fff', boxShadow: '0 3px 12px rgba(184,134,11,0.25)' }
   if (op.accion === 'salida')
     return { background: 'rgba(26,127,75,0.12)', color: '#1a7f4b' }
   return { background: 'rgba(201,168,76,0.14)', color: '#8B6914' }
@@ -279,8 +279,8 @@ export default function Asistencia() {
                 <div className="flex items-center gap-3 mb-3">
                   <div className="relative shrink-0">
                     <div
-                      className="w-11 h-11 flex items-center justify-center rounded-full text-sm font-bold text-white"
-                      style={{ background: 'linear-gradient(135deg, #D4AF37, #A8823A)' }}
+                      className="w-11 h-11 flex items-center justify-center rounded-full text-sm font-bold"
+                      style={{ background: '#ffffff', color: '#A8823A', border: '1.5px solid rgba(201,168,76,0.6)' }}
                     >
                       {iniciales(e.nombre)}
                     </div>
@@ -753,8 +753,8 @@ function Reporte() {
                   className="w-full flex items-center gap-3 p-3.5 text-left transition-all active:scale-[0.99]"
                 >
                   <div
-                    className="w-11 h-11 shrink-0 flex items-center justify-center rounded-full text-sm font-bold text-white"
-                    style={{ background: 'linear-gradient(135deg, #D4AF37, #A8823A)' }}
+                    className="w-11 h-11 shrink-0 flex items-center justify-center rounded-full text-sm font-bold"
+                    style={{ background: '#ffffff', color: '#A8823A', border: '1.5px solid rgba(201,168,76,0.6)' }}
                   >
                     {iniciales(g.nombre)}
                   </div>
