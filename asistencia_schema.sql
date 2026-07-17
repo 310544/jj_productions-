@@ -59,7 +59,8 @@ CREATE INDEX IF NOT EXISTS idx_jornadas_fecha ON jornadas(fecha);
 -- Recibe el PIN (la hora la decide el servidor) y, cuando hay que elegir,
 -- la acción: p_accion = 'almuerzo' (salir a almorzar) o 'salida' (terminar día).
 DROP FUNCTION IF EXISTS registrar_marca(TEXT);
-CREATE OR REPLACE FUNCTION registrar_marca(p_pin TEXT, p_accion TEXT DEFAULT NULL)
+DROP FUNCTION IF EXISTS registrar_marca(TEXT, TEXT);
+CREATE OR REPLACE FUNCTION registrar_marca(p_pin TEXT, p_accion TEXT DEFAULT NULL, p_empleada_id BIGINT DEFAULT NULL)
 RETURNS JSON
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -72,24 +73,40 @@ DECLARE
   v_emp         empleadas%ROWTYPE;
   v_j           jornadas%ROWTYPE;
   v_now         TIMESTAMPTZ := now();
+  v_today       DATE := (now() AT TIME ZONE 'America/Bogota')::date; -- 👈 "hoy" en Colombia, NO en UTC
   v_almuerzo    INTEGER;
   v_min         INTEGER;
   v_pago        NUMERIC;
 BEGIN
-  -- Buscar empleada por PIN (solo activas)
-  SELECT * INTO v_emp FROM empleadas WHERE pin = p_pin AND activo = true;
-  IF NOT FOUND THEN
-    RETURN json_build_object('ok', false, 'error', 'PIN incorrecto');
+  -- Identificar a la empleada.
+  -- La app manda p_empleada_id = la persona de la TARJETA que se tocó. El PIN
+  -- debe ser el de ESA persona: si tocas a Julián y pones el PIN de Sara, se
+  -- rechaza. (Antes se buscaba solo por PIN, así que la marca caía sobre el
+  -- dueño del PIN sin importar la tarjeta.) Si no llega id, se usa el modo viejo.
+  IF p_empleada_id IS NOT NULL THEN
+    SELECT * INTO v_emp FROM empleadas WHERE id = p_empleada_id AND activo = true;
+    IF NOT FOUND THEN
+      RETURN json_build_object('ok', false, 'error', 'Empleada no encontrada');
+    END IF;
+    IF v_emp.pin <> p_pin THEN
+      RETURN json_build_object('ok', false, 'error', 'Ese PIN no es de ' || v_emp.nombre);
+    END IF;
+  ELSE
+    SELECT * INTO v_emp FROM empleadas WHERE pin = p_pin AND activo = true;
+    IF NOT FOUND THEN
+      RETURN json_build_object('ok', false, 'error', 'PIN incorrecto');
+    END IF;
   END IF;
 
-  -- Jornada de hoy (si existe)
+  -- Jornada de hoy (si existe). Usamos v_today (hora Colombia), NO CURRENT_DATE
+  -- (que es UTC): de noche en Colombia UTC ya va un día adelante y no coincidiría.
   SELECT * INTO v_j FROM jornadas
-    WHERE empleada_id = v_emp.id AND fecha = CURRENT_DATE;
+    WHERE empleada_id = v_emp.id AND fecha = v_today;
 
   -- ── Paso 1: primera marca del día = ENTRADA ──
   IF NOT FOUND THEN
-    INSERT INTO jornadas (empleada_id, hora_entrada, estado)
-      VALUES (v_emp.id, v_now, 'trabajando_am');
+    INSERT INTO jornadas (empleada_id, fecha, hora_entrada, estado)
+      VALUES (v_emp.id, v_today, v_now, 'trabajando_am');
     RETURN json_build_object('ok', true, 'accion', 'entrada',
       'empleada', v_emp.nombre, 'hora', v_now);
   END IF;
@@ -155,4 +172,4 @@ CREATE POLICY jor_select ON jornadas FOR SELECT TO anon USING (true);
 -- (No se crea política de INSERT/UPDATE/DELETE => queda denegado para anon)
 
 -- Permitir que el usuario anónimo (la app) llame la función
-GRANT EXECUTE ON FUNCTION registrar_marca(TEXT, TEXT) TO anon;
+GRANT EXECUTE ON FUNCTION registrar_marca(TEXT, TEXT, BIGINT) TO anon;

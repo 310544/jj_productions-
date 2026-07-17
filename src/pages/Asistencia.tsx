@@ -63,7 +63,12 @@ function Reloj() {
 const isoDe = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 
-const hoyISO = () => isoDe(new Date())
+// "Hoy" SIEMPRE en horario de Colombia, sin importar la zona horaria del
+// dispositivo. 'en-CA' devuelve el formato YYYY-MM-DD. Tiene que coincidir con
+// la fecha que usa la función registrar_marca() en la base (America/Bogota);
+// si no, de noche (cuando en UTC ya es otro día) la app no encontraría la
+// jornada recién creada y seguiría mostrando "Marcar entrada".
+const hoyISO = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' })
 
 // Fecha 'YYYY-MM-DD' -> texto corto "lun 9 jun"
 const fechaCorta = (iso: string) =>
@@ -181,6 +186,7 @@ export default function Asistencia() {
     const { data, error } = await supabase.rpc('registrar_marca', {
       p_pin: pin,
       p_accion: marcando?.opcion.accion ?? null,
+      p_empleada_id: marcando?.emp.id ?? null, // la persona de la tarjeta tocada: el PIN debe ser el suyo
     })
     const res: ResultadoMarca = error
       ? { ok: false, error: 'Error de conexión, intenta otra vez' }
