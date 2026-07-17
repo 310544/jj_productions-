@@ -142,6 +142,18 @@ body {
   background: var(--bg);
 }
 
+/* Evita el zoom automático de iOS/Safari al enfocar un campo.
+   Safari hace zoom cuando la fuente del input es < 16px. Solo en dispositivos
+   táctiles (celular/tablet) forzamos 16px; en escritorio se conserva el diseño.
+   Regla única y sin JS: arregla TODOS los inputs de la app de una vez. */
+@media (hover: none) and (pointer: coarse) {
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
+
 /* Hide scrollbar globally */
 ::-webkit-scrollbar { display: none; }
 * { scrollbar-width: none; -ms-overflow-style: none; }
