@@ -581,7 +581,9 @@ function DetalleEncargoModal({ encargo, onClose, onChange, onCloseAndRefresh }: 
       fechaInicio: enc.fecha_pedido,
       fechaFin: enc.fecha_entrega,
       subtitulo: 'Traje a la medida',
-      footer: `Pedido ${enc.fecha_pedido}   ·   Entrega ${enc.fecha_entrega}`,
+      etiquetaInicio: 'Fecha de pedido',
+      etiquetaFin: 'Fecha de entrega',
+      sinPoliticas: true, // las politicas son del alquiler, no de trajes a la medida
     }
   }
   const facturaWhatsapp = () => compartirComprobante(datosComprobante())

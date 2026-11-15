@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { abrirChatWhatsApp, copiarImagenComprobante } from '../lib/comprobante'
+import { compartirComprobante, type ComprobanteData } from '../lib/comprobante'
 import { formatDateRange } from '../lib/formatDate'
 import DatePicker from '../components/DatePicker'
 import type { Prenda, Vendedor, TipoItem } from '../types'
@@ -742,272 +742,38 @@ export default function Alquiler({ inPopup, onClose, editRentalId, onSaved }: Pr
     border: '1px solid var(--glass-border)',
   }
 
-  async function generateReceiptImage(): Promise<Blob | null> {
-    const canvas = document.createElement('canvas')
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return null
-
-    const scale = 3
-    const w = 500
-    const pad = 30
-    const headerH = 92
-    const FONT = 'Plus Jakarta Sans, system-ui, sans-serif'
-
-    const money = (n: number) =>
-      n.toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 })
-
-    const itemsCount = selectedGarments.length
-    const validPagos = pagos.filter(p => (parseInt(p.monto) || 0) > 0)
-    const pagosCount = validPagos.length
-    const clientRows = 1 + 1 + (direccion.trim() ? 1 : 0) + 1 + (quienEntrega.trim() ? 1 : 0)
-    const totalsBoxH = 122 + (depositoNum > 0 ? 26 : 0)
-
-    // Altura dinamica (debe coincidir con los incrementos de dibujo)
-    let H = headerH + 30
-    H += 18 + clientRows * 24 + 22                 // datos cliente + divisor
-    H += 18 + itemsCount * 26 + 22                 // prendas + divisor
-    if (pagosCount > 0) H += 18 + pagosCount * 24 + 22
-    H += totalsBoxH + 18
-    H += 26 + 22                                   // footer + pad inferior
-
-    canvas.width = w * scale
-    canvas.height = H * scale
-    ctx.scale(scale, scale)
-
-    // Fondo (esquinas redondeadas, transparentes fuera)
-    ctx.fillStyle = '#ffffff'
-    ctx.beginPath()
-    ctx.roundRect(0, 0, w, H, 20)
-    ctx.fill()
-
-    // ===== Header smoking =====
-    const hg = ctx.createLinearGradient(0, 0, w, headerH)
-    hg.addColorStop(0, '#231D15')
-    hg.addColorStop(1, '#14110B')
-    ctx.fillStyle = hg
-    ctx.beginPath()
-    ctx.roundRect(0, 0, w, headerH, [20, 20, 0, 0])
-    ctx.fill()
-
-    // Marca
-    ctx.textAlign = 'left'
-    ctx.fillStyle = '#E8C766'
-    ctx.font = `800 24px ${FONT}`
-    ctx.fillText('JJ PRODUCTION', pad, 44)
-    ctx.fillStyle = 'rgba(255,255,255,0.55)'
-    ctx.font = `500 11px ${FONT}`
-    ctx.fillText('Alquiler & Venta de Trajes', pad, 64)
-
-    // Factura # (derecha)
-    ctx.textAlign = 'right'
-    ctx.fillStyle = 'rgba(255,255,255,0.45)'
-    ctx.font = `600 10px ${FONT}`
-    ctx.fillText('FACTURA', w - pad, 38)
-    ctx.fillStyle = '#F2E4BC'
-    ctx.font = `800 18px ${FONT}`
-    ctx.fillText(savedCodigo, w - pad, 60)
-    ctx.textAlign = 'left'
-
-    // Barra de acento dorada
-    const gb = ctx.createLinearGradient(0, 0, w, 0)
-    gb.addColorStop(0, '#D4AF37')
-    gb.addColorStop(1, '#A8823A')
-    ctx.fillStyle = gb
-    ctx.fillRect(0, headerH, w, 4)
-
-    let y = headerH + 36
-
-    const sectionTitle = (t: string) => {
-      ctx.fillStyle = '#A8823A'
-      ctx.font = `700 11px ${FONT}`
-      ctx.fillText(t.toUpperCase(), pad, y)
-      y += 18
+  // Datos de la factura para el comprobante (mismo diseño que en el Historial)
+  function datosComprobante(): ComprobanteData {
+    return {
+      codigo: savedCodigo,
+      cliente: customerName.trim(),
+      cedula: cedula.trim(),
+      telefono: customerPhone.trim(),
+      vendedor: vendedor || '',
+      direccion: direccion.trim(),
+      quienEntrega: quienEntrega.trim(),
+      prendas: selectedGarments.map((item) => ({
+        codigo: item.prenda.codigo,
+        nombre: item.prenda.nombre,
+        tipo: item.tipo,
+        precio: parseInt(item.precio) || 0,
+        cantidad: parseInt(item.cantidad) || 1,
+      })),
+      pagos: pagos
+        .filter((p) => (parseInt(p.monto) || 0) > 0)
+        .map((p) => ({ fecha: p.fecha, monto: parseInt(p.monto) || 0 })),
+      total: parseFloat(total) || 0,
+      abonado: abonoTotal,
+      deposito: depositoNum,
+      fechaInicio,
+      fechaFin,
     }
-    const divider = () => {
-      y += 8
-      ctx.strokeStyle = 'rgba(0,0,0,0.08)'
-      ctx.lineWidth = 1
-      ctx.beginPath()
-      ctx.moveTo(pad, y)
-      ctx.lineTo(w - pad, y)
-      ctx.stroke()
-      y += 14
-    }
-    const row = (label: string, value: string) => {
-      ctx.fillStyle = '#9A9488'
-      ctx.font = `500 12px ${FONT}`
-      ctx.fillText(label, pad, y)
-      const lw = ctx.measureText(label).width
-      ctx.fillStyle = '#1C1A14'
-      ctx.font = `600 12px ${FONT}`
-      ctx.fillText(value, pad + lw + 8, y)
-      y += 24
-    }
-
-    // ===== Datos del cliente =====
-    sectionTitle('Datos del cliente')
-    row('Cliente', customerName.trim() || '-')
-    row('Cédula / Tel', `${cedula.trim() || '-'}  ·  ${customerPhone.trim() || '-'}`)
-    if (direccion.trim()) row('Dirección', direccion.trim())
-    row('Vendedor', vendedor)
-    if (quienEntrega.trim()) row('Entrega', quienEntrega.trim())
-    divider()
-
-    // ===== Prendas =====
-    sectionTitle(`Prendas (${itemsCount})`)
-    for (const item of selectedGarments) {
-      const isAlq = item.tipo === 'alquiler'
-      // pill ALQ/VTA
-      const pillW = 36
-      ctx.fillStyle = isAlq ? 'rgba(201,168,76,0.16)' : 'rgba(0,0,0,0.06)'
-      ctx.beginPath()
-      ctx.roundRect(pad, y - 11, pillW, 16, 5)
-      ctx.fill()
-      ctx.fillStyle = isAlq ? '#A8823A' : '#7A746A'
-      ctx.font = `700 9px ${FONT}`
-      ctx.textAlign = 'center'
-      ctx.fillText(isAlq ? 'ALQ' : 'VTA', pad + pillW / 2, y)
-      ctx.textAlign = 'left'
-      // nombre
-      ctx.fillStyle = '#1C1A14'
-      ctx.font = `600 12px ${FONT}`
-      ctx.fillText(item.prenda.codigo, pad + pillW + 10, y)
-      const cw = ctx.measureText(item.prenda.codigo).width
-      ctx.fillStyle = '#9A9488'
-      ctx.font = `400 12px ${FONT}`
-      ctx.fillText(`  ${item.prenda.nombre}`, pad + pillW + 10 + cw, y)
-      // precio por prenda (derecha)
-      ctx.textAlign = 'right'
-      ctx.fillStyle = '#1C1A14'
-      ctx.font = `600 12px ${FONT}`
-      ctx.fillText(money(parseInt(item.precio) || 0), w - pad, y)
-      ctx.textAlign = 'left'
-      y += 26
-    }
-    divider()
-
-    // ===== Abonos =====
-    if (pagosCount > 0) {
-      sectionTitle(`Abonos (${pagosCount})`)
-      for (const p of validPagos) {
-        const monto = parseInt(p.monto) || 0
-        ctx.fillStyle = '#9A9488'
-        ctx.font = `400 12px ${FONT}`
-        ctx.fillText(p.fecha, pad, y)
-        ctx.textAlign = 'right'
-        ctx.fillStyle = '#16a34a'
-        ctx.font = `600 12px ${FONT}`
-        ctx.fillText(money(monto), w - pad, y)
-        ctx.textAlign = 'left'
-        y += 24
-      }
-      divider()
-    }
-
-    // ===== Caja de totales =====
-    const pagado = deuda <= 0
-    const boxTop = y
-    ctx.fillStyle = '#FBF6E7'
-    ctx.strokeStyle = 'rgba(201,168,76,0.40)'
-    ctx.lineWidth = 1
-    ctx.beginPath()
-    ctx.roundRect(pad, boxTop, w - pad * 2, totalsBoxH, 14)
-    ctx.fill()
-    ctx.stroke()
-
-    const bx = pad + 18
-    const bxr = w - pad - 18
-    let by = boxTop + 28
-
-    const totalRow = (label: string, value: string, color: string, bold = false) => {
-      ctx.textAlign = 'left'
-      ctx.fillStyle = '#7A746A'
-      ctx.font = `500 12px ${FONT}`
-      ctx.fillText(label, bx, by)
-      ctx.textAlign = 'right'
-      ctx.fillStyle = color
-      ctx.font = `${bold ? 800 : 700} ${bold ? 15 : 13}px ${FONT}`
-      ctx.fillText(value, bxr, by)
-      ctx.textAlign = 'left'
-    }
-
-    totalRow('Total', money(parseFloat(total) || 0), '#1C1A14')
-    by += 26
-    totalRow('Abonado', money(abonoTotal), '#16a34a')
-    by += 14
-    ctx.strokeStyle = 'rgba(201,168,76,0.30)'
-    ctx.beginPath()
-    ctx.moveTo(bx, by)
-    ctx.lineTo(bxr, by)
-    ctx.stroke()
-    by += 24
-
-    if (pagado) {
-      ctx.textAlign = 'left'
-      ctx.fillStyle = '#7A746A'
-      ctx.font = `500 12px ${FONT}`
-      ctx.fillText('Estado', bx, by)
-      // badge PAGADO
-      ctx.textAlign = 'right'
-      ctx.font = `800 12px ${FONT}`
-      const txt = 'PAGADO'
-      const tw = ctx.measureText(txt).width
-      ctx.fillStyle = 'rgba(22,163,74,0.14)'
-      ctx.beginPath()
-      ctx.roundRect(bxr - tw - 20, by - 14, tw + 20, 20, 10)
-      ctx.fill()
-      ctx.fillStyle = '#16a34a'
-      ctx.fillText(txt, bxr - 10, by)
-      ctx.textAlign = 'left'
-    } else {
-      totalRow('Saldo pendiente', money(deuda), '#dc2626', true)
-    }
-
-    if (depositoNum > 0) {
-      by += 26
-      totalRow('Deposito (se devuelve)', money(depositoNum), '#9A7B2C')
-    }
-
-    y = boxTop + totalsBoxH + 24
-
-    // ===== Footer =====
-    ctx.textAlign = 'center'
-    ctx.fillStyle = '#9A9488'
-    ctx.font = `500 11px ${FONT}`
-    ctx.fillText(`Entrega ${fechaInicio}   ·   Devolución ${fechaFin}`, w / 2, y)
-    ctx.textAlign = 'left'
-
-    return new Promise((resolve) => {
-      canvas.toBlob((blob) => resolve(blob), 'image/png')
-    })
   }
 
   // Abre directo el chat del cliente en WhatsApp (aunque no este en los contactos)
-  // con el resumen escrito, y deja la imagen del comprobante copiada para pegarla.
+  // con el resumen escrito, y deja la imagen de la factura copiada para pegarla.
   function handleShareReceipt() {
-    copiarImagenComprobante(generateReceiptImage(), `factura-${savedCodigo || 'rentatraje'}.png`)
-
-    const formatCOP = (n: number) => n.toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 })
-    const itemsText = selectedGarments.map(item =>
-      `• ${item.tipo === 'alquiler' ? 'ALQ' : 'VTA'} ${item.prenda.codigo} - ${item.prenda.nombre}`
-    ).join('%0A')
-    const pagado = deuda <= 0
-
-    const msg =
-      `*JJ PRODUCTION*%0A_Alquiler & Venta de Trajes_%0A%0A` +
-      `*Factura ${savedCodigo}*%0A` +
-      `━━━━━━━━━━━━━%0A` +
-      `*Cliente:* ${customerName.trim()}%0A` +
-      `*Cédula:* ${cedula.trim()}%0A` +
-      `*Vendedor:* ${vendedor}%0A%0A` +
-      `*Prendas:*%0A${itemsText}%0A%0A` +
-      `━━━━━━━━━━━━━%0A` +
-      `Total:  *${formatCOP(parseFloat(total) || 0)}*%0A` +
-      `Abonado:  ${formatCOP(abonoTotal)}%0A` +
-      (pagado ? `*✅ PAGADO*` : `*Saldo pendiente:  ${formatCOP(deuda)}*`) +
-      (depositoNum > 0 ? `%0ADepósito:  *${formatCOP(depositoNum)}* _(se devuelve al traer el traje)_` : '') +
-      `%0A%0A_Entrega ${fechaInicio}  ·  Devolución ${fechaFin}_`
-    abrirChatWhatsApp(customerPhone, msg)
+    compartirComprobante(datosComprobante())
   }
 
   return (

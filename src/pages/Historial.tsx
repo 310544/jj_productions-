@@ -16,6 +16,7 @@ interface RentalSummary {
   monto_total: number
   abono: number
   deposito?: number
+  created_at?: string
   estado: string
   vendedor: string
   cedula?: string
@@ -26,7 +27,7 @@ interface RentalSummary {
 
 interface RentalDetail {
   rental: RentalSummary
-  items: { id: number; garment_id: number; precio: number; tipo: string; garments: any }[]
+  items: { id: number; garment_id: number; precio: number; tipo: string; cantidad?: number; garments: any }[]
   pagos: { id: number; monto: number; fecha: string }[]
 }
 
@@ -51,7 +52,7 @@ export default function Historial() {
     setLoading(true)
     const { data } = await supabase
       .from('rentals')
-      .select('id, codigo, fecha_inicio, fecha_fin, monto_total, abono, deposito, estado, vendedor, cedula, direccion, quien_entrega, customers(nombre, telefono)')
+      .select('id, codigo, fecha_inicio, fecha_fin, monto_total, abono, deposito, estado, created_at, vendedor, cedula, direccion, quien_entrega, customers(nombre, telefono)')
       .order('created_at', { ascending: false })
       .limit(200)
 
@@ -63,12 +64,12 @@ export default function Historial() {
     setLoadingDetail(true)
     const { data: rental } = await supabase
       .from('rentals')
-      .select('id, codigo, fecha_inicio, fecha_fin, monto_total, abono, deposito, estado, vendedor, cedula, direccion, quien_entrega, customers(nombre, telefono)')
+      .select('id, codigo, fecha_inicio, fecha_fin, monto_total, abono, deposito, estado, created_at, vendedor, cedula, direccion, quien_entrega, customers(nombre, telefono)')
       .eq('id', id)
       .single()
     const { data: items } = await supabase
       .from('rental_items')
-      .select('id, garment_id, precio, tipo, garments(codigo, nombre)')
+      .select('id, garment_id, precio, tipo, cantidad, garments(codigo, nombre)')
       .eq('rental_id', id)
     const { data: pagos } = await supabase
       .from('pagos')
@@ -130,11 +131,13 @@ export default function Historial() {
         nombre: i.garments?.nombre || '',
         tipo: i.tipo,
         precio: i.precio || 0,
+        cantidad: i.cantidad || 1,
       })),
       pagos: (pagos || []).map((p: any) => ({ fecha: p.fecha, monto: p.monto })),
       total: rental.monto_total || 0,
       abonado: rental.abono || 0,
       deposito: rental.deposito || 0,
+      fecha: rental.created_at,
       fechaInicio: rental.fecha_inicio,
       fechaFin: rental.fecha_fin,
     })

@@ -1,11 +1,13 @@
 // Generación y envío del comprobante de factura (imagen PNG + WhatsApp)
-// Usado tanto al crear la factura (Alquiler) como al reenviarla desde el Historial.
+// Usado al crear la factura (Alquiler), al reenviarla desde el Historial y
+// en los trajes a la medida (Encargos). Todos usan el mismo diseño.
 
 export interface ComprobanteItem {
   codigo: string
   nombre: string
   tipo: string // 'alquiler' | 'venta'
-  precio: number
+  precio: number // precio de la línea (si hay cantidad > 1, es el total de esa línea)
+  cantidad?: number // default 1
 }
 
 export interface ComprobantePago {
@@ -28,16 +30,80 @@ export interface ComprobanteData {
   deposito?: number // se devuelve al cliente cuando trae el traje
   fechaInicio: string
   fechaFin: string
-  footer?: string // si se pasa, reemplaza la línea "Entrega · Devolución" del pie
+  fecha?: string // fecha de la factura (default: hoy)
+  etiquetaInicio?: string // default "Fecha de entrega"
+  etiquetaFin?: string // default "Fecha de devolución"
+  footer?: string // nota opcional que se muestra bajo los totales
   subtitulo?: string // texto bajo la marca (default: "Alquiler & Venta de Trajes")
+  sinPoliticas?: boolean // true = no imprimir las políticas del alquiler (ej. trajes a la medida)
 }
 
-const FONT = 'Plus Jakarta Sans, system-ui, sans-serif'
+// ── Políticas del alquiler (se imprimen al final de la factura) ──
+export const POLITICAS = {
+  aviso: 'Pasados 6 meses perderá el depósito dejado por la prenda',
+  clausulas: [
+    'Las prendas serán entregadas bajo la responsabilidad del cliente en la fecha estipulada; cualquier daño o desperfecto que sufra la tela deberá ser pagado en su totalidad.',
+    'No lavar las prendas, la empresa asume el costo.',
+    'Las prendas deberán ser devueltas en la fecha estipulada en el presente contrato. Cada día de retraso tiene un recargo de $20.000.',
+    'Por prendas apartadas o retiradas, por ningún motivo se devolverá el dinero; se hará cambio por otra prenda o mercancía existente en el almacén o por medio de otro alquiler.',
+  ],
+}
+
+// ── Datos del negocio que salen en la franja de CONTACTO de la factura ──
+// Llena los que quieras mostrar; los que queden vacíos no aparecen.
+export const CONTACTO_NEGOCIO = {
+  telefono: '',  // ej: '311 234 5678'
+  direccion: '', // ej: 'Calle 10 # 20-30, Villavicencio'
+  instagram: '', // ej: '@jjproduction'
+  correo: '',    // ej: 'jjproduction@gmail.com'
+}
+
+// ── Estilo ──
+const SANS = '"Plus Jakarta Sans", system-ui, sans-serif'
+const SERIF = '"Cormorant Garamond", Georgia, "Times New Roman", serif'
+// Serif para textos largos (políticas): números normales y buena lectura en pequeño
+const SERIF_TXT = 'Lora, Georgia, "Times New Roman", serif'
+const C = {
+  tinta: '#1F1B16',     // texto principal
+  gris: '#5C564C',      // etiquetas
+  grisSuave: '#9A9387', // textos secundarios
+  linea: '#A8A196',     // bordes de la tabla y líneas
+  oro: '#A8823A',       // dorado de la marca
+  oroSuave: '#C9A35A',
+  beige: '#EADCC2',     // franja de contacto
+  beigeClaro: '#F7F1E6',// caja de total
+  cafe: '#4A3423',      // texto sobre beige
+  rojo: '#B42318',
+  verde: '#1E7F45',
+}
+const LOGO_URL = '/logo-factura.png' // logo de la empresa (JJ Production)
+
 const money = (n: number) =>
   n.toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 })
 
-// Recorta el texto con "…" si excede el ancho disponible (evita que el nombre
-// largo del traje se monte sobre el precio).
+const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
+
+/** Separa una fecha 'AAAA-MM-DD' (o Date / ISO) sin correrla por zona horaria. */
+function partesFecha(f?: string): { d: string; m: string; a: string; mes: string } {
+  let y: number, mo: number, da: number
+  const m = (f || '').match(/^(\d{4})-(\d{2})-(\d{2})/)
+  if (m) {
+    y = +m[1]; mo = +m[2]; da = +m[3]
+  } else {
+    const t = f ? new Date(f) : new Date()
+    const ok = !isNaN(t.getTime()) ? t : new Date()
+    y = ok.getFullYear(); mo = ok.getMonth() + 1; da = ok.getDate()
+  }
+  return { d: String(da).padStart(2, '0'), m: String(mo).padStart(2, '0'), a: String(y), mes: MESES[mo - 1] || '' }
+}
+
+function fechaLarga(f?: string): string {
+  if (!f) return ''
+  const p = partesFecha(f)
+  return `${+p.d} ${p.mes} ${p.a}`
+}
+
+// Recorta el texto con "…" si excede el ancho disponible
 function truncar(ctx: CanvasRenderingContext2D, text: string, maxW: number): string {
   if (ctx.measureText(text).width <= maxW) return text
   let t = text
@@ -45,252 +111,472 @@ function truncar(ctx: CanvasRenderingContext2D, text: string, maxW: number): str
   return t + '…'
 }
 
+/** Parte un texto en líneas: la primera con ancho anchoPrimera, las demás con anchoResto. */
+function envolver(ctx: CanvasRenderingContext2D, text: string, anchoPrimera: number, anchoResto: number): string[] {
+  const palabras = text.split(/\s+/)
+  const lineas: string[] = []
+  let actual = ''
+  for (const p of palabras) {
+    const prueba = actual ? `${actual} ${p}` : p
+    const max = lineas.length === 0 ? anchoPrimera : anchoResto
+    if (ctx.measureText(prueba).width > max && actual) {
+      lineas.push(actual)
+      actual = p
+    } else {
+      actual = prueba
+    }
+  }
+  if (actual) lineas.push(actual)
+  return lineas
+}
+
+/** Texto con espaciado entre letras (para títulos en mayúscula). */
+function espaciado(
+  ctx: CanvasRenderingContext2D, text: string, x: number, y: number, sp: number,
+  align: 'left' | 'center' | 'right' = 'left',
+) {
+  const chars = [...text]
+  const ancho = chars.reduce((s, ch) => s + ctx.measureText(ch).width, 0) + sp * (chars.length - 1)
+  let cx = align === 'left' ? x : align === 'center' ? x - ancho / 2 : x - ancho
+  const prev = ctx.textAlign
+  ctx.textAlign = 'left'
+  for (const ch of chars) {
+    ctx.fillText(ch, cx, y)
+    cx += ctx.measureText(ch).width + sp
+  }
+  ctx.textAlign = prev
+}
+
+function cargarLogo(): Promise<HTMLImageElement | null> {
+  return new Promise((resolve) => {
+    const img = new Image()
+    img.onload = () => resolve(img)
+    img.onerror = () => resolve(null)
+    img.src = LOGO_URL
+  })
+}
+
+async function cargarFuentes() {
+  if (!document.fonts?.load) return
+  try {
+    await Promise.all([
+      document.fonts.load(`600 30px ${SERIF}`),
+      document.fonts.load(`700 30px ${SERIF}`),
+      document.fonts.load(`italic 600 24px ${SERIF}`),
+      document.fonts.load(`500 14px ${SERIF_TXT}`),
+      document.fonts.load(`700 14px ${SERIF_TXT}`),
+      document.fonts.load(`400 14px ${SANS}`),
+      document.fonts.load(`600 14px ${SANS}`),
+      document.fonts.load(`700 14px ${SANS}`),
+    ])
+  } catch {
+    // si no cargan, se usan las de respaldo
+  }
+}
+
 export async function generarComprobanteBlob(d: ComprobanteData): Promise<Blob | null> {
   const canvas = document.createElement('canvas')
   const ctx = canvas.getContext('2d')
   if (!ctx) return null
 
-  const scale = 3
-  const w = 380               // más angosto = formato vertical tipo recibo (se ve más grande en mobile)
-  const pad = 30
-  const headerH = 120
+  const [logo] = await Promise.all([cargarLogo(), cargarFuentes()])
 
-  // Espaciados (letra más grande → más alto en cada fila)
-  const TITLE_H = 28
-  const ROW_H = 32
-  const ITEM_H = 36
-  const PAGO_H = 32
-  const DIV_H = 28            // divisor: 10 antes + 18 después
+  // ── Medidas (proporción hoja carta / A4) ──
+  const scale = 2
+  const W = 800
+  const M = 56                 // margen lateral
+  const ROW_H = 40             // filas de la tabla
+  const MIN_FILAS = 7          // filas mínimas (como en una factura impresa)
 
-  const itemsCount = d.prendas.length
-  const validPagos = d.pagos.filter((p) => (p.monto || 0) > 0)
-  const pagosCount = validPagos.length
-  const deuda = d.total - d.abonado
-  const direccion = (d.direccion || '').trim()
-  const quienEntrega = (d.quienEntrega || '').trim()
-  const clientRows = 1 + 1 + (direccion ? 1 : 0) + 1 + (quienEntrega ? 1 : 0)
-  const totalsBoxH = 165 + ((d.deposito || 0) > 0 ? 34 : 0)
+  const filasDatos: [string, string, string, string][] = [
+    ['Cliente:', d.cliente.trim(), 'Teléfono:', d.telefono.trim()],
+    ['Cédula:', d.cedula.trim(), 'Dirección:', (d.direccion || '').trim()],
+  ]
+  if (d.vendedor || d.quienEntrega) {
+    filasDatos.push(['Vendedor:', d.vendedor || '', 'Entregó:', (d.quienEntrega || '').trim()])
+  }
+  filasDatos.push([
+    `${d.etiquetaInicio || 'Fecha de entrega'}:`, fechaLarga(d.fechaInicio),
+    `${d.etiquetaFin || 'Fecha de devolución'}:`, fechaLarga(d.fechaFin),
+  ])
 
-  // Altura dinamica (debe coincidir con los incrementos de dibujo)
-  let H = headerH + 44
-  H += TITLE_H + clientRows * ROW_H + DIV_H
-  H += TITLE_H + itemsCount * ITEM_H + DIV_H
-  if (pagosCount > 0) H += TITLE_H + pagosCount * PAGO_H + DIV_H
-  H += totalsBoxH + 24
-  H += 36
+  const pagos = d.pagos.filter((p) => (p.monto || 0) > 0)
+  const deuda = (d.total || 0) - (d.abonado || 0)
+  const pagado = deuda <= 0
+  const deposito = d.deposito || 0
+  const filasTabla = Math.max(MIN_FILAS, d.prendas.length)
 
-  canvas.width = w * scale
+  const yDatos = 228
+  const yTabla = yDatos + filasDatos.length * 44 + 22
+  const altoTabla = 46 + filasTabla * ROW_H
+  const yResumen = yTabla + altoTabla + 30
+  const altoResumen = Math.max(
+    130,
+    (pagos.length ? 34 + pagos.length * 24 : 0) + (d.footer ? 36 : 0),
+  )
+  const DEP_H = 84 // caja del deposito (aparte, bien visible)
+  const yDeposito = yResumen + altoResumen + 16
+  const finContenido = deposito > 0 ? yDeposito + DEP_H : yResumen + altoResumen
+
+  // Políticas: se miden antes de dar tamaño al lienzo
+  const POL_TXT = `500 13.5px ${SERIF_TXT}`
+  const POL_LBL = `700 13.5px ${SERIF_TXT}`
+  const POL_LH = 21
+  const anchoPol = W - M * 2
+  const clausulas: { etiqueta: string; ancho: number; lineas: string[] }[] = []
+  if (!d.sinPoliticas) {
+    POLITICAS.clausulas.forEach((texto, i) => {
+      const etiqueta = `Cláusula ${i + 1}:`
+      ctx.font = POL_LBL
+      const ancho = ctx.measureText(etiqueta).width + 6
+      ctx.font = POL_TXT
+      clausulas.push({ etiqueta, ancho, lineas: envolver(ctx, texto, anchoPol - ancho, anchoPol) })
+    })
+  }
+  const yPoliticas = finContenido + 40
+  const altoPoliticas = clausulas.length
+    ? 34 + 30 + clausulas.reduce((s, c) => s + c.lineas.length * POL_LH + 8, 0)
+    : 0
+  const finTodo = clausulas.length ? yPoliticas + altoPoliticas : finContenido
+  const contacto = [
+    CONTACTO_NEGOCIO.telefono && `WhatsApp: ${CONTACTO_NEGOCIO.telefono}`,
+    CONTACTO_NEGOCIO.instagram && `Instagram: ${CONTACTO_NEGOCIO.instagram}`,
+    CONTACTO_NEGOCIO.direccion,
+    CONTACTO_NEGOCIO.correo,
+  ].filter(Boolean) as string[]
+  // La factura termina con las políticas: línea dorada de cierre (+ contacto si hay)
+  const yCierre = finTodo + 10
+  const H = yCierre + (contacto.length ? 40 : 0) + 34
+
+  canvas.width = W * scale
   canvas.height = H * scale
   ctx.scale(scale, scale)
+  ctx.textBaseline = 'alphabetic'
 
   // Fondo
-  ctx.fillStyle = '#ffffff'
-  ctx.beginPath()
-  ctx.roundRect(0, 0, w, H, 20)
-  ctx.fill()
+  ctx.fillStyle = '#FFFFFF'
+  ctx.fillRect(0, 0, W, H)
 
-  // ===== Header smoking =====
-  const hg = ctx.createLinearGradient(0, 0, w, headerH)
-  hg.addColorStop(0, '#231D15')
-  hg.addColorStop(1, '#14110B')
-  ctx.fillStyle = hg
-  ctx.beginPath()
-  ctx.roundRect(0, 0, w, headerH, [20, 20, 0, 0])
-  ctx.fill()
-
-  // Marca
-  ctx.textAlign = 'left'
-  ctx.fillStyle = '#E8C766'
-  ctx.font = `800 30px ${FONT}`
-  ctx.fillText('JJ PRODUCTION', pad, 54)
-  ctx.fillStyle = 'rgba(255,255,255,0.55)'
-  ctx.font = `500 14px ${FONT}`
-  ctx.fillText(d.subtitulo || 'Alquiler & Venta de Trajes', pad, 80)
-
-  // Factura # (derecha)
-  ctx.textAlign = 'right'
-  ctx.fillStyle = 'rgba(255,255,255,0.45)'
-  ctx.font = `600 13px ${FONT}`
-  ctx.fillText('FACTURA', w - pad, 46)
-  ctx.fillStyle = '#F2E4BC'
-  ctx.font = `800 23px ${FONT}`
-  ctx.fillText(d.codigo, w - pad, 76)
-  ctx.textAlign = 'left'
-
-  // Barra de acento dorada
-  const gb = ctx.createLinearGradient(0, 0, w, 0)
-  gb.addColorStop(0, '#D4AF37')
-  gb.addColorStop(1, '#A8823A')
-  ctx.fillStyle = gb
-  ctx.fillRect(0, headerH, w, 5)
-
-  let y = headerH + 44
-
-  const sectionTitle = (t: string) => {
-    ctx.fillStyle = '#A8823A'
-    ctx.font = `700 14px ${FONT}`
-    ctx.fillText(t.toUpperCase(), pad, y)
-    y += 23
+  // ═════════ Encabezado ═════════
+  // Logo de la empresa (si no carga, se escribe el nombre)
+  if (logo) {
+    const lw = 270
+    const lh = (logo.naturalHeight / logo.naturalWidth) * lw
+    ctx.drawImage(logo, M - 6, 40, lw, lh)
+  } else {
+    ctx.fillStyle = C.tinta
+    ctx.font = `700 34px ${SERIF}`
+    ctx.fillText('JJ Production', M, 100)
   }
-  const divider = () => {
-    y += 10
-    ctx.strokeStyle = 'rgba(0,0,0,0.08)'
-    ctx.lineWidth = 1
-    ctx.beginPath()
-    ctx.moveTo(pad, y)
-    ctx.lineTo(w - pad, y)
-    ctx.stroke()
-    y += 18
-  }
-  const row = (label: string, value: string) => {
-    ctx.fillStyle = '#9A9488'
-    ctx.font = `500 15px ${FONT}`
-    ctx.fillText(label, pad, y)
-    const lw = ctx.measureText(label).width
-    ctx.fillStyle = '#1C1A14'
-    ctx.font = `600 15px ${FONT}`
-    ctx.fillText(value, pad + lw + 10, y)
-    y += 30
-  }
+  ctx.fillStyle = C.oro
+  ctx.font = `600 10.5px ${SANS}`
+  espaciado(ctx, (d.subtitulo || 'Alquiler & Venta de Trajes').toUpperCase(), M + 2, 168, 2.2)
 
-  // ===== Datos del cliente =====
-  sectionTitle('Datos del cliente')
-  row('Cliente', d.cliente.trim() || '-')
-  row('Cédula / Tel', `${d.cedula.trim() || '-'}  ·  ${d.telefono.trim() || '-'}`)
-  if (direccion) row('Dirección', direccion)
-  row('Vendedor', d.vendedor)
-  if (quienEntrega) row('Entrega', quienEntrega)
-  divider()
-
-  // ===== Prendas =====
-  sectionTitle(`Prendas (${itemsCount})`)
-  for (const item of d.prendas) {
-    const isAlq = item.tipo === 'alquiler'
-    const pillW = 46
-    ctx.fillStyle = isAlq ? 'rgba(201,168,76,0.16)' : 'rgba(0,0,0,0.06)'
-    ctx.beginPath()
-    ctx.roundRect(pad, y - 14, pillW, 20, 6)
-    ctx.fill()
-    ctx.fillStyle = isAlq ? '#A8823A' : '#7A746A'
-    ctx.font = `700 11px ${FONT}`
-    ctx.textAlign = 'center'
-    ctx.fillText(isAlq ? 'ALQ' : 'VTA', pad + pillW / 2, y)
-    ctx.textAlign = 'left'
-    ctx.fillStyle = '#1C1A14'
-    ctx.font = `600 15px ${FONT}`
-    ctx.fillText(item.codigo, pad + pillW + 12, y)
-    const cw = ctx.measureText(item.codigo).width
-    // Precio (medir primero para saber cuánto espacio queda para el nombre)
-    const priceStr = money(item.precio || 0)
-    ctx.font = `600 15px ${FONT}`
-    const priceW = ctx.measureText(priceStr).width
-    // Nombre, recortado para no chocar con el precio
-    const nameX = pad + pillW + 12 + cw
-    const maxNameW = (w - pad - priceW - 14) - nameX
-    ctx.fillStyle = '#9A9488'
-    ctx.font = `400 15px ${FONT}`
-    ctx.fillText(truncar(ctx, `  ${item.nombre}`, Math.max(20, maxNameW)), nameX, y)
-    ctx.textAlign = 'right'
-    ctx.fillStyle = '#1C1A14'
-    ctx.font = `600 15px ${FONT}`
-    ctx.fillText(priceStr, w - pad, y)
-    ctx.textAlign = 'left'
-    y += 33
-  }
-  divider()
-
-  // ===== Abonos =====
-  if (pagosCount > 0) {
-    sectionTitle(`Abonos (${pagosCount})`)
-    for (const p of validPagos) {
-      ctx.fillStyle = '#9A9488'
-      ctx.font = `400 15px ${FONT}`
-      ctx.fillText(p.fecha, pad, y)
-      ctx.textAlign = 'right'
-      ctx.fillStyle = '#16a34a'
-      ctx.font = `600 15px ${FONT}`
-      ctx.fillText(money(p.monto || 0), w - pad, y)
-      ctx.textAlign = 'left'
-      y += 30
-    }
-    divider()
-  }
-
-  // ===== Caja de totales =====
-  const pagado = deuda <= 0
-  const boxTop = y
-  ctx.fillStyle = '#FBF6E7'
-  ctx.strokeStyle = 'rgba(201,168,76,0.40)'
+  // Recuadro FECHA  |  DD | MM | AAAA
+  const f = partesFecha(d.fecha)
+  const celdas = [
+    { t: 'FECHA', w: 84 },
+    { t: f.d, w: 42 },
+    { t: f.m, w: 42 },
+    { t: f.a, w: 62 },
+  ]
+  const anchoFecha = celdas.reduce((s, c) => s + c.w, 0)
+  let fx = W - M - anchoFecha
+  const fy = 50
+  const fh = 40
+  ctx.strokeStyle = C.linea
   ctx.lineWidth = 1
+  ctx.textAlign = 'center'
+  celdas.forEach((c, i) => {
+    ctx.strokeRect(fx + 0.5, fy + 0.5, c.w, fh)
+    if (i === 0) {
+      ctx.fillStyle = C.gris
+      ctx.font = `500 13px ${SANS}`
+      espaciado(ctx, c.t, fx + c.w / 2, fy + 25, 1.2, 'center')
+    } else {
+      ctx.fillStyle = C.tinta
+      ctx.font = `600 14px ${SANS}`
+      ctx.fillText(c.t, fx + c.w / 2, fy + 25)
+    }
+    fx += c.w
+  })
+
+  // Factura N°
+  ctx.textAlign = 'right'
+  ctx.fillStyle = C.tinta
+  ctx.font = `500 14px ${SANS}`
+  ctx.fillText('Factura', W - M, fy + fh + 34)
+  ctx.fillStyle = C.oro
+  ctx.font = `700 21px ${SANS}`
+  ctx.fillText(`N° ${d.codigo || '—'}`, W - M, fy + fh + 62)
+  ctx.textAlign = 'left'
+
+  // Línea fina dorada bajo el encabezado
+  ctx.strokeStyle = 'rgba(168,130,58,0.35)'
   ctx.beginPath()
-  ctx.roundRect(pad, boxTop, w - pad * 2, totalsBoxH, 16)
-  ctx.fill()
+  ctx.moveTo(M, 188.5)
+  ctx.lineTo(W - M, 188.5)
   ctx.stroke()
 
-  const bx = pad + 20
-  const bxr = w - pad - 20
-  let by = boxTop + 34
+  // ═════════ Datos del cliente (etiqueta + línea) ═════════
+  const colW = (W - M * 2 - 40) / 2
+  const campo = (label: string, valor: string, x: number, y: number) => {
+    ctx.fillStyle = C.gris
+    ctx.font = `500 13px ${SANS}`
+    ctx.fillText(label, x, y)
+    const lx = x + ctx.measureText(label).width + 10
+    const lEnd = x + colW
+    ctx.strokeStyle = C.tinta
+    ctx.lineWidth = 0.8
+    ctx.beginPath()
+    ctx.moveTo(lx, y + 6.5)
+    ctx.lineTo(lEnd, y + 6.5)
+    ctx.stroke()
+    if (valor) {
+      ctx.fillStyle = C.tinta
+      ctx.font = `600 13.5px ${SANS}`
+      ctx.fillText(truncar(ctx, valor, lEnd - lx - 6), lx + 4, y + 1)
+    }
+  }
+  filasDatos.forEach(([l1, v1, l2, v2], i) => {
+    const y = yDatos + i * 44
+    campo(l1, v1, M, y)
+    campo(l2, v2, M + colW + 40, y)
+  })
 
-  const totalRow = (label: string, value: string, color: string, bold = false) => {
+  // ═════════ Tabla de prendas ═════════
+  const cols = [
+    { t: 'CÓDIGO', w: 118, align: 'center' as const },
+    { t: 'PRODUCTO', w: 0, align: 'left' as const },
+    { t: 'PRECIO', w: 150, align: 'right' as const },
+  ]
+  const anchoTabla = W - M * 2
+  cols[1].w = anchoTabla - cols[0].w - cols[2].w
+  const xs: number[] = []
+  let acc = M
+  for (const c of cols) { xs.push(acc); acc += c.w }
+
+  ctx.strokeStyle = C.linea
+  ctx.lineWidth = 1
+  // borde exterior
+  ctx.strokeRect(M + 0.5, yTabla + 0.5, anchoTabla, altoTabla)
+  // encabezado
+  ctx.fillStyle = C.beigeClaro
+  ctx.fillRect(M + 1, yTabla + 1, anchoTabla - 1, 45)
+  ctx.beginPath()
+  ctx.moveTo(M, yTabla + 46.5)
+  ctx.lineTo(M + anchoTabla, yTabla + 46.5)
+  // filas
+  for (let i = 1; i < filasTabla; i++) {
+    const y = yTabla + 46 + i * ROW_H + 0.5
+    ctx.moveTo(M, y)
+    ctx.lineTo(M + anchoTabla, y)
+  }
+  // columnas
+  for (let i = 1; i < cols.length; i++) {
+    ctx.moveTo(xs[i] + 0.5, yTabla)
+    ctx.lineTo(xs[i] + 0.5, yTabla + altoTabla)
+  }
+  ctx.stroke()
+
+  ctx.fillStyle = C.gris
+  ctx.font = `600 12px ${SANS}`
+  cols.forEach((c, i) => espaciado(ctx, c.t, xs[i] + c.w / 2, yTabla + 28, 1.4, 'center'))
+
+  d.prendas.forEach((it, i) => {
+    const cy = yTabla + 46 + i * ROW_H + 26
+    const cant = Math.max(1, it.cantidad || 1)
+    const linea = it.precio || 0
+    // código del producto
+    ctx.textAlign = 'center'
+    ctx.fillStyle = C.tinta
+    ctx.font = `600 13px ${SANS}`
+    ctx.fillText(truncar(ctx, it.codigo || '', cols[0].w - 16), xs[0] + cols[0].w / 2, cy)
+    // producto: nombre (+ unidades si son varias) + tipo
     ctx.textAlign = 'left'
-    ctx.fillStyle = '#7A746A'
-    ctx.font = `500 15px ${FONT}`
-    ctx.fillText(label, bx, by)
+    const px = xs[1] + 14
+    const pMax = cols[1].w - 28
+    const tipo = it.tipo === 'venta' ? 'VENTA' : it.tipo === 'alquiler' ? 'ALQUILER' : ''
+    ctx.font = `600 10px ${SANS}`
+    const anchoTipo = tipo ? ctx.measureText(tipo).width + 14 : 0
+    const nombre = (it.nombre || '') + (cant > 1 ? `  (x${cant})` : '')
+    ctx.fillStyle = C.tinta
+    ctx.font = `500 13.5px ${SANS}`
+    ctx.fillText(truncar(ctx, nombre, pMax - anchoTipo), px, cy)
+    if (tipo) {
+      ctx.textAlign = 'right'
+      ctx.fillStyle = C.oro
+      ctx.font = `600 10px ${SANS}`
+      ctx.fillText(tipo, px + pMax, cy - 1)
+      ctx.textAlign = 'left'
+    }
+    // precio de la línea
+    ctx.textAlign = 'right'
+    ctx.fillStyle = C.tinta
+    ctx.font = `600 13.5px ${SANS}`
+    ctx.fillText(money(linea), xs[2] + cols[2].w - 18, cy)
+    ctx.textAlign = 'left'
+  })
+
+  // ═════════ Resumen: abonos (izq.) y totales (der.) ═════════
+  const boxW = 300
+  const boxX = W - M - boxW
+  let ry = yResumen
+
+  // Caja "Total: $"
+  ctx.fillStyle = C.beigeClaro
+  ctx.fillRect(boxX, ry, boxW, 54)
+  ctx.fillStyle = C.cafe
+  ctx.font = `800 19px ${SANS}`
+  ctx.fillText('Total:', boxX + 18, ry + 34)
+  ctx.textAlign = 'right'
+  ctx.fillText(money(d.total || 0), boxX + boxW - 18, ry + 34)
+  ctx.textAlign = 'left'
+  ry += 54 + 26
+
+  const filaResumen = (label: string, valor: string, color: string, bold = false) => {
+    ctx.fillStyle = C.gris
+    ctx.font = `500 13px ${SANS}`
+    ctx.fillText(label, boxX + 18, ry)
     ctx.textAlign = 'right'
     ctx.fillStyle = color
-    ctx.font = `${bold ? 800 : 700} ${bold ? 19 : 16}px ${FONT}`
-    ctx.fillText(value, bxr, by)
+    ctx.font = `${bold ? 700 : 600} ${bold ? 14.5 : 13.5}px ${SANS}`
+    ctx.fillText(valor, boxX + boxW - 18, ry)
     ctx.textAlign = 'left'
+    ry += 26
+  }
+  filaResumen('Abonado', money(d.abonado || 0), C.verde)
+  if (pagado) filaResumen('Saldo pendiente', 'PAGADO', C.verde, true)
+  else filaResumen('Saldo pendiente', money(deuda), C.rojo, true)
+
+  // Columna izquierda: detalle de abonos y notas
+  const izqW = boxX - M - 40
+  let ly = yResumen + 16
+  if (pagos.length) {
+    ctx.fillStyle = C.gris
+    ctx.font = `600 11px ${SANS}`
+    espaciado(ctx, 'ABONOS', M, ly, 1.6)
+    ly += 24
+    for (const p of pagos) {
+      ctx.fillStyle = C.gris
+      ctx.font = `500 12.5px ${SANS}`
+      ctx.fillText(fechaLarga(p.fecha), M, ly)
+      ctx.textAlign = 'right'
+      ctx.fillStyle = C.tinta
+      ctx.font = `600 12.5px ${SANS}`
+      ctx.fillText(money(p.monto), M + Math.min(izqW, 240), ly)
+      ctx.textAlign = 'left'
+      ly += 24
+    }
+    ly += 10
+  }
+  const notas: string[] = []
+  if (d.footer) notas.push(d.footer)
+  ctx.fillStyle = C.grisSuave
+  ctx.font = `italic 500 12px ${SANS}`
+  for (const n of notas) {
+    ctx.fillText(truncar(ctx, n, izqW), M, ly + 4)
+    ly += 20
   }
 
-  totalRow('Total', money(d.total || 0), '#1C1A14')
-  by += 32
-  totalRow('Abonado', money(d.abonado || 0), '#16a34a')
-  by += 18
-  ctx.strokeStyle = 'rgba(201,168,76,0.30)'
-  ctx.beginPath()
-  ctx.moveTo(bx, by)
-  ctx.lineTo(bxr, by)
-  ctx.stroke()
-  by += 30
-
-  if (pagado) {
-    ctx.textAlign = 'left'
-    ctx.fillStyle = '#7A746A'
-    ctx.font = `500 15px ${FONT}`
-    ctx.fillText('Estado', bx, by)
-    ctx.textAlign = 'right'
-    ctx.font = `800 15px ${FONT}`
-    const txt = 'PAGADO'
-    const tw = ctx.measureText(txt).width
-    ctx.fillStyle = 'rgba(22,163,74,0.14)'
+  // ═════════ Depósito (aparte, bien visible) ═════════
+  if (deposito > 0) {
+    const dw = W - M * 2
+    ctx.fillStyle = '#FFFBF2'
+    ctx.strokeStyle = C.oroSuave
+    ctx.lineWidth = 1.5
     ctx.beginPath()
-    ctx.roundRect(bxr - tw - 24, by - 17, tw + 24, 25, 12)
+    ctx.roundRect(M, yDeposito, dw, DEP_H, 12)
     ctx.fill()
-    ctx.fillStyle = '#16a34a'
-    ctx.fillText(txt, bxr - 12, by)
+    ctx.stroke()
+    // franja dorada a la izquierda
+    ctx.fillStyle = C.oroSuave
+    ctx.beginPath()
+    ctx.roundRect(M, yDeposito, 8, DEP_H, [12, 0, 0, 12])
+    ctx.fill()
+
+    ctx.fillStyle = C.oro
+    ctx.font = `800 13px ${SANS}`
+    espaciado(ctx, 'DEPÓSITO', M + 30, yDeposito + 36, 2)
+    ctx.fillStyle = C.gris
+    ctx.font = `500 13px ${SANS}`
+    ctx.fillText('Se le devuelve al cliente cuando trae el traje.', M + 30, yDeposito + 60)
+    ctx.textAlign = 'right'
+    ctx.fillStyle = C.tinta
+    ctx.font = `800 26px ${SANS}`
+    ctx.fillText(money(deposito), M + dw - 26, yDeposito + 52)
     ctx.textAlign = 'left'
-  } else {
-    totalRow('Saldo pendiente', money(deuda), '#dc2626', true)
   }
 
-  if ((d.deposito || 0) > 0) {
-    by += 34
-    totalRow('Deposito (se devuelve)', money(d.deposito || 0), '#9A7B2C')
+  // ═════════ Políticas del alquiler ═════════
+  if (clausulas.length) {
+    let py = yPoliticas
+    // Título centrado con líneas doradas a los lados
+    ctx.fillStyle = C.tinta
+    ctx.font = `700 19px ${SERIF}`
+    const titulo = 'POLÍTICAS DEL ALQUILER'
+    espaciado(ctx, titulo, W / 2, py + 6, 2.4, 'center')
+    const anchoTit = [...titulo].reduce((s2, ch) => s2 + ctx.measureText(ch).width, 0) + 2.4 * (titulo.length - 1)
+    ctx.strokeStyle = 'rgba(168,130,58,0.55)'
+    ctx.lineWidth = 1
+    ctx.beginPath()
+    ctx.moveTo(M, py + 0.5)
+    ctx.lineTo(W / 2 - anchoTit / 2 - 18, py + 0.5)
+    ctx.moveTo(W / 2 + anchoTit / 2 + 18, py + 0.5)
+    ctx.lineTo(W - M, py + 0.5)
+    ctx.stroke()
+    py += 34
+
+    // Aviso del depósito
+    ctx.fillStyle = C.tinta
+    ctx.font = `700 11.5px ${SANS}`
+    espaciado(ctx, POLITICAS.aviso.toUpperCase(), W / 2, py, 1.2, 'center')
+    py += 30
+
+    // Cláusulas
+    for (const c of clausulas) {
+      c.lineas.forEach((linea, i) => {
+        if (i === 0) {
+          ctx.fillStyle = C.tinta
+          ctx.font = POL_LBL
+          ctx.fillText(c.etiqueta, M, py)
+          ctx.font = POL_TXT
+          ctx.fillText(linea, M + c.ancho, py)
+        } else {
+          ctx.font = POL_TXT
+          ctx.fillText(linea, M, py)
+        }
+        py += POL_LH
+      })
+      py += 8
+    }
   }
 
-  y = boxTop + totalsBoxH + 28
-
-  // ===== Footer =====
-  ctx.textAlign = 'center'
-  ctx.fillStyle = '#9A9488'
-  ctx.font = `500 14px ${FONT}`
-  ctx.fillText(d.footer || `Entrega ${d.fechaInicio}   ·   Devolución ${d.fechaFin}`, w / 2, y)
-  ctx.textAlign = 'left'
+  // ═════════ Cierre de la factura ═════════
+  ctx.strokeStyle = 'rgba(168,130,58,0.55)'
+  ctx.lineWidth = 1
+  ctx.beginPath()
+  ctx.moveTo(M, yCierre + 0.5)
+  ctx.lineTo(W - M, yCierre + 0.5)
+  ctx.stroke()
+  if (contacto.length) {
+    ctx.textAlign = 'center'
+    ctx.fillStyle = C.gris
+    ctx.font = `500 12.5px ${SANS}`
+    ctx.fillText(contacto.join('   ·   '), W / 2, yCierre + 28)
+    ctx.textAlign = 'left'
+  }
+  // Barra dorada al pie: marca el final de la factura
+  ctx.fillStyle = C.oroSuave
+  ctx.fillRect(0, H - 8, W, 8)
 
   return new Promise((resolve) => {
     canvas.toBlob((blob) => resolve(blob), 'image/png')
   })
+}
+
+function lineaFechas(d: ComprobanteData): string {
+  return `${d.etiquetaInicio || 'Entrega'} ${fechaLarga(d.fechaInicio)}  ·  ${d.etiquetaFin || 'Devolución'} ${fechaLarga(d.fechaFin)}`
 }
 
 function construirMensaje(d: ComprobanteData): string {
@@ -312,7 +598,7 @@ function construirMensaje(d: ComprobanteData): string {
     `Abonado:  ${money(d.abonado || 0)}%0A` +
     (pagado ? `*✅ PAGADO*` : `*Saldo pendiente:  ${money(deuda > 0 ? deuda : 0)}*`) +
     ((d.deposito || 0) > 0 ? `%0ADepósito:  *${money(d.deposito || 0)}* _(se devuelve al traer el traje)_` : '') +
-    `%0A%0A_${d.footer || `Entrega ${d.fechaInicio}  ·  Devolución ${d.fechaFin}`}_`
+    `%0A%0A_${d.footer || lineaFechas(d)}_`
   )
 }
 
@@ -394,7 +680,7 @@ function construirCorreoBody(d: ComprobanteData): string {
     `Abonado: ${money(d.abonado || 0)}\n` +
     (pagado ? `Estado: PAGADO\n` : `Saldo pendiente: ${money(deuda > 0 ? deuda : 0)}\n`) +
     ((d.deposito || 0) > 0 ? `Deposito: ${money(d.deposito || 0)} (se devuelve al traer el traje)\n` : '') +
-    `\n${d.footer || `Entrega ${d.fechaInicio}  ·  Devolución ${d.fechaFin}`}\n\n` +
+    `\n${d.footer || lineaFechas(d)}\n\n` +
     `(Adjunto la imagen de la factura)`
   )
 }
