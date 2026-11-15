@@ -316,34 +316,68 @@ function construirMensaje(d: ComprobanteData): string {
   )
 }
 
-// Genera la imagen y la comparte. En móvil usa el menú nativo de compartir
-// (permite enviar la IMAGEN directo a WhatsApp). En escritorio descarga la
-// imagen y abre WhatsApp Web con el texto, para adjuntar la imagen manualmente.
-export async function compartirComprobante(d: ComprobanteData) {
-  const blob = await generarComprobanteBlob(d)
-  const phone = (d.telefono || '').replace(/\D/g, '')
+// ── WhatsApp directo al chat del cliente ──
 
-  if (blob) {
-    const file = new File([blob], `factura-${d.codigo}.png`, { type: 'image/png' })
-    if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-      try {
-        await navigator.share({ files: [file], title: `Factura ${d.codigo}` })
-        return
-      } catch {
-        // el usuario canceló o falló: caer al fallback
-      }
+/**
+ * Deja el número listo para WhatsApp: solo dígitos y con indicativo de país.
+ * Un celular colombiano de 10 dígitos (3xx xxx xxxx) recibe el 57 adelante.
+ */
+export function telefonoWhatsApp(raw: string): string {
+  let d = (raw || '').replace(/\D/g, '')
+  if (d.startsWith('00')) d = d.slice(2)
+  if (d.length === 10 && d.startsWith('3')) d = '57' + d
+  return d
+}
+
+/**
+ * Abre el chat de WhatsApp con ese número, aunque no esté guardado en los
+ * contactos, con el mensaje ya escrito. El texto puede traer saltos como %0A.
+ */
+export function abrirChatWhatsApp(telefono: string, mensaje: string) {
+  const texto = encodeURIComponent(mensaje.split('%0A').join('\n'))
+  window.open(`https://wa.me/${telefonoWhatsApp(telefono)}?text=${texto}`, '_blank')
+}
+
+/**
+ * Copia la imagen del comprobante al portapapeles para pegarla en el chat
+ * (mantener presionado → Pegar). Hay que llamarla en el mismo toque del botón,
+ * sin await antes, o el navegador la bloquea. Si no se puede copiar, en
+ * computador descarga la imagen para adjuntarla a mano.
+ */
+export async function copiarImagenComprobante(imagen: Promise<Blob | null>, nombre: string): Promise<boolean> {
+  try {
+    if (!navigator.clipboard?.write || typeof ClipboardItem === 'undefined') throw new Error('sin portapapeles')
+    await navigator.clipboard.write([
+      new ClipboardItem({
+        'image/png': imagen.then((b) => {
+          if (!b) throw new Error('sin imagen')
+          return b
+        }),
+      }),
+    ])
+    return true
+  } catch {
+    const esComputador = window.matchMedia?.('(pointer: fine)').matches
+    const blob = await imagen
+    if (blob && esComputador) {
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = nombre
+      a.click()
+      URL.revokeObjectURL(url)
     }
-    // Fallback escritorio: descargar la imagen
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `factura-${d.codigo}.png`
-    a.click()
-    URL.revokeObjectURL(url)
+    return false
   }
+}
 
-  // Abrir WhatsApp con el texto (en escritorio el usuario adjunta la imagen descargada)
-  window.open(`https://wa.me/${phone}?text=${construirMensaje(d)}`, '_blank')
+// Envía el comprobante por WhatsApp: abre DIRECTO el chat con el número del
+// cliente (no hace falta tenerlo guardado) con el resumen escrito, y deja la
+// imagen copiada para pegarla en el chat.
+export async function compartirComprobante(d: ComprobanteData) {
+  const copia = copiarImagenComprobante(generarComprobanteBlob(d), `factura-${d.codigo}.png`)
+  abrirChatWhatsApp(d.telefono, construirMensaje(d))
+  await copia
 }
 
 // Cuerpo del correo en texto plano (sin formato de WhatsApp)

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { abrirChatWhatsApp, copiarImagenComprobante } from '../lib/comprobante'
 import { formatDateRange } from '../lib/formatDate'
 import DatePicker from '../components/DatePicker'
 import type { Prenda, Vendedor, TipoItem } from '../types'
@@ -981,30 +982,11 @@ export default function Alquiler({ inPopup, onClose, editRentalId, onSaved }: Pr
     })
   }
 
-  async function handleShareReceipt() {
-    const blob = await generateReceiptImage()
-    if (!blob) return
+  // Abre directo el chat del cliente en WhatsApp (aunque no este en los contactos)
+  // con el resumen escrito, y deja la imagen del comprobante copiada para pegarla.
+  function handleShareReceipt() {
+    copiarImagenComprobante(generateReceiptImage(), `factura-${savedCodigo || 'rentatraje'}.png`)
 
-    const file = new File([blob], 'comprobante-rentatraje.png', { type: 'image/png' })
-
-    if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-      try {
-        await navigator.share({
-          files: [file],
-          title: 'Comprobante RentaTraje',
-        })
-        return
-      } catch {}
-    }
-
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = 'comprobante-rentatraje.png'
-    a.click()
-    URL.revokeObjectURL(url)
-
-    const phone = customerPhone.trim().replace(/\D/g, '')
     const formatCOP = (n: number) => n.toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 })
     const itemsText = selectedGarments.map(item =>
       `• ${item.tipo === 'alquiler' ? 'ALQ' : 'VTA'} ${item.prenda.codigo} - ${item.prenda.nombre}`
@@ -1025,7 +1007,7 @@ export default function Alquiler({ inPopup, onClose, editRentalId, onSaved }: Pr
       (pagado ? `*✅ PAGADO*` : `*Saldo pendiente:  ${formatCOP(deuda)}*`) +
       (depositoNum > 0 ? `%0ADepósito:  *${formatCOP(depositoNum)}* _(se devuelve al traer el traje)_` : '') +
       `%0A%0A_Entrega ${fechaInicio}  ·  Devolución ${fechaFin}_`
-    window.open(`https://wa.me/${phone}?text=${msg}`, '_blank')
+    abrirChatWhatsApp(customerPhone, msg)
   }
 
   return (
@@ -1119,7 +1101,7 @@ export default function Alquiler({ inPopup, onClose, editRentalId, onSaved }: Pr
                 type="tel"
                 value={customerPhone}
                 onChange={(e) => setCustomerPhone(e.target.value)}
-                placeholder="+54 11 1234-5678"
+                placeholder="300 123 4567"
                 className="w-full rounded-[12px] pl-11 pr-4 py-3 text-base text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-accent/40"
                 style={inputStyle}
               />
@@ -1701,6 +1683,9 @@ export default function Alquiler({ inPopup, onClose, editRentalId, onSaved }: Pr
               <WhatsappLogo className="w-5 h-5" aria-hidden="true" />
               Enviar comprobante a WhatsApp
             </button>
+            <p className="text-xs text-center text-text-tertiary -mt-1">
+              Se abre el chat del cliente. La imagen queda copiada: en el chat mantén presionado y toca <b>Pegar</b>.
+            </p>
 
             <button
               onClick={() => {
