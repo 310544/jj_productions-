@@ -15,6 +15,7 @@ interface RentalSummary {
   fecha_fin: string
   monto_total: number
   abono: number
+  deposito?: number
   estado: string
   vendedor: string
   cedula?: string
@@ -50,7 +51,7 @@ export default function Historial() {
     setLoading(true)
     const { data } = await supabase
       .from('rentals')
-      .select('id, codigo, fecha_inicio, fecha_fin, monto_total, abono, estado, vendedor, cedula, direccion, quien_entrega, customers(nombre, telefono)')
+      .select('id, codigo, fecha_inicio, fecha_fin, monto_total, abono, deposito, estado, vendedor, cedula, direccion, quien_entrega, customers(nombre, telefono)')
       .order('created_at', { ascending: false })
       .limit(200)
 
@@ -62,7 +63,7 @@ export default function Historial() {
     setLoadingDetail(true)
     const { data: rental } = await supabase
       .from('rentals')
-      .select('id, codigo, fecha_inicio, fecha_fin, monto_total, abono, estado, vendedor, cedula, direccion, quien_entrega, customers(nombre, telefono)')
+      .select('id, codigo, fecha_inicio, fecha_fin, monto_total, abono, deposito, estado, vendedor, cedula, direccion, quien_entrega, customers(nombre, telefono)')
       .eq('id', id)
       .single()
     const { data: items } = await supabase
@@ -133,6 +134,7 @@ export default function Historial() {
       pagos: (pagos || []).map((p: any) => ({ fecha: p.fecha, monto: p.monto })),
       total: rental.monto_total || 0,
       abonado: rental.abono || 0,
+      deposito: rental.deposito || 0,
       fechaInicio: rental.fecha_inicio,
       fechaFin: rental.fecha_fin,
     })
@@ -141,7 +143,11 @@ export default function Historial() {
 
   async function handleDevolucion() {
     if (!detail) return
-    if (!window.confirm('Registrar devolucion de todas las prendas alquiladas de esta factura?')) return
+    const dep = detail.rental.deposito || 0
+    const aviso = dep > 0
+      ? `\n\nRecuerda devolverle al cliente el deposito de ${dep.toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 })}.`
+      : ''
+    if (!window.confirm('Registrar devolucion de todas las prendas alquiladas de esta factura?' + aviso)) return
 
     setDevolviendo(true)
     const alquilerItems = detail.items.filter(i => i.tipo === 'alquiler')
@@ -541,6 +547,14 @@ export default function Historial() {
                         <span style={{ color: 'var(--success)' }}>Abonado</span>
                         <span className="font-semibold" style={{ color: 'var(--success)' }}>{formatCOP(rental.abono)}</span>
                       </div>
+                      {(rental.deposito || 0) > 0 && (
+                        <div className="flex justify-between text-sm">
+                          <span className="text-text-secondary">
+                            Deposito <span className="text-xs text-text-tertiary">({rental.estado === 'activo' ? 'devolver al traer el traje' : 'devuelto'})</span>
+                          </span>
+                          <span className="font-semibold text-text-primary">{formatCOP(rental.deposito || 0)}</span>
+                        </div>
+                      )}
                       <div
                         className="border-t pt-2 flex justify-between items-center"
                         style={{ borderColor: 'rgba(201,168,76,0.30)' }}

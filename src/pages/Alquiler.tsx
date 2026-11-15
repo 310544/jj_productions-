@@ -51,6 +51,7 @@ export default function Alquiler({ inPopup, onClose, editRentalId, onSaved }: Pr
   const [fechaFin, setFechaFin] = useState('')
   const [total, setTotal] = useState('')
   const [pagos, setPagos] = useState<PagoLocal[]>([])
+  const [deposito, setDeposito] = useState('') // se devuelve cuando traen el traje
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showPopup, setShowPopup] = useState(false)
@@ -114,6 +115,7 @@ export default function Alquiler({ inPopup, onClose, editRentalId, onSaved }: Pr
       setFechaInicio(rental.fecha_inicio)
       setFechaFin(rental.fecha_fin)
       setTotal(rental.monto_total ? String(rental.monto_total) : '')
+      setDeposito(rental.deposito ? String(Math.round(rental.deposito)) : '')
       setSavedCodigo(rental.codigo || '')
 
       if (items) {
@@ -339,6 +341,7 @@ export default function Alquiler({ inPopup, onClose, editRentalId, onSaved }: Pr
 
   const abonoTotal = pagos.reduce((sum, p) => sum + (parseInt(p.monto) || 0), 0)
   const deuda = (parseFloat(total) || 0) - abonoTotal
+  const depositoNum = parseInt(deposito) || 0
 
   function formatPesos(value: string) {
     const num = parseInt(value.replace(/\D/g, ''), 10)
@@ -529,6 +532,7 @@ export default function Alquiler({ inPopup, onClose, editRentalId, onSaved }: Pr
           fecha_fin: fechaFin,
           monto_total: parseFloat(total),
           abono: 0,
+          deposito: depositoNum,
         })
         .eq('id', editRentalId)
 
@@ -626,6 +630,7 @@ export default function Alquiler({ inPopup, onClose, editRentalId, onSaved }: Pr
           fecha_fin: fechaFin,
           monto_total: parseFloat(total),
           abono: 0,
+          deposito: depositoNum,
           estado: 'activo',
         })
         .select()
@@ -754,7 +759,7 @@ export default function Alquiler({ inPopup, onClose, editRentalId, onSaved }: Pr
     const validPagos = pagos.filter(p => (parseInt(p.monto) || 0) > 0)
     const pagosCount = validPagos.length
     const clientRows = 1 + 1 + (direccion.trim() ? 1 : 0) + 1 + (quienEntrega.trim() ? 1 : 0)
-    const totalsBoxH = 122
+    const totalsBoxH = 122 + (depositoNum > 0 ? 26 : 0)
 
     // Altura dinamica (debe coincidir con los incrementos de dibujo)
     let H = headerH + 30
@@ -957,6 +962,11 @@ export default function Alquiler({ inPopup, onClose, editRentalId, onSaved }: Pr
       totalRow('Saldo pendiente', money(deuda), '#dc2626', true)
     }
 
+    if (depositoNum > 0) {
+      by += 26
+      totalRow('Deposito (se devuelve)', money(depositoNum), '#9A7B2C')
+    }
+
     y = boxTop + totalsBoxH + 24
 
     // ===== Footer =====
@@ -1013,6 +1023,7 @@ export default function Alquiler({ inPopup, onClose, editRentalId, onSaved }: Pr
       `Total:  *${formatCOP(parseFloat(total) || 0)}*%0A` +
       `Abonado:  ${formatCOP(abonoTotal)}%0A` +
       (pagado ? `*✅ PAGADO*` : `*Saldo pendiente:  ${formatCOP(deuda)}*`) +
+      (depositoNum > 0 ? `%0ADepósito:  *${formatCOP(depositoNum)}* _(se devuelve al traer el traje)_` : '') +
       `%0A%0A_Entrega ${fechaInicio}  ·  Devolución ${fechaFin}_`
     window.open(`https://wa.me/${phone}?text=${msg}`, '_blank')
   }
@@ -1564,6 +1575,26 @@ export default function Alquiler({ inPopup, onClose, editRentalId, onSaved }: Pr
             >
               {(deuda > 0 ? deuda : 0).toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 })}
             </div>
+          </div>
+        </div>
+
+        {/* Deposito: no suma al total, se le devuelve al cliente cuando trae el traje */}
+        <div>
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-medium text-text-secondary">Deposito</label>
+            <span className="text-[10px] text-text-tertiary">Se devuelve cuando traen el traje</span>
+          </div>
+          <div className="relative mt-1">
+            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-text-tertiary pointer-events-none">$</span>
+            <input
+              type="text"
+              inputMode="numeric"
+              value={formatPesos(deposito)}
+              onChange={(e) => setDeposito(e.target.value.replace(/\D/g, ''))}
+              placeholder="0"
+              className="w-full rounded-[12px] pl-8 pr-4 py-2.5 text-sm font-medium text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-accent/40"
+              style={{ background: 'var(--field-bg)', border: '1px solid var(--field-border)' }}
+            />
           </div>
         </div>
       </div>

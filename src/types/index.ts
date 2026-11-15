@@ -39,6 +39,7 @@ export interface Alquiler {
   monto_total: number
   abono: number
   saldo_pendiente: number
+  deposito?: number // se devuelve al cliente cuando trae el traje
   estado: 'activo' | 'finalizado'
 }
 

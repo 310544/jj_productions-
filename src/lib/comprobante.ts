@@ -25,6 +25,7 @@ export interface ComprobanteData {
   pagos: ComprobantePago[]
   total: number
   abonado: number
+  deposito?: number // se devuelve al cliente cuando trae el traje
   fechaInicio: string
   fechaFin: string
   footer?: string // si se pasa, reemplaza la línea "Entrega · Devolución" del pie
@@ -68,7 +69,7 @@ export async function generarComprobanteBlob(d: ComprobanteData): Promise<Blob |
   const direccion = (d.direccion || '').trim()
   const quienEntrega = (d.quienEntrega || '').trim()
   const clientRows = 1 + 1 + (direccion ? 1 : 0) + 1 + (quienEntrega ? 1 : 0)
-  const totalsBoxH = 165
+  const totalsBoxH = 165 + ((d.deposito || 0) > 0 ? 34 : 0)
 
   // Altura dinamica (debe coincidir con los incrementos de dibujo)
   let H = headerH + 44
@@ -273,6 +274,11 @@ export async function generarComprobanteBlob(d: ComprobanteData): Promise<Blob |
     totalRow('Saldo pendiente', money(deuda), '#dc2626', true)
   }
 
+  if ((d.deposito || 0) > 0) {
+    by += 34
+    totalRow('Deposito (se devuelve)', money(d.deposito || 0), '#9A7B2C')
+  }
+
   y = boxTop + totalsBoxH + 28
 
   // ===== Footer =====
@@ -305,6 +311,7 @@ function construirMensaje(d: ComprobanteData): string {
     `Total:  *${money(d.total || 0)}*%0A` +
     `Abonado:  ${money(d.abonado || 0)}%0A` +
     (pagado ? `*✅ PAGADO*` : `*Saldo pendiente:  ${money(deuda > 0 ? deuda : 0)}*`) +
+    ((d.deposito || 0) > 0 ? `%0ADepósito:  *${money(d.deposito || 0)}* _(se devuelve al traer el traje)_` : '') +
     `%0A%0A_${d.footer || `Entrega ${d.fechaInicio}  ·  Devolución ${d.fechaFin}`}_`
   )
 }
@@ -352,6 +359,7 @@ function construirCorreoBody(d: ComprobanteData): string {
     `Total: ${money(d.total || 0)}\n` +
     `Abonado: ${money(d.abonado || 0)}\n` +
     (pagado ? `Estado: PAGADO\n` : `Saldo pendiente: ${money(deuda > 0 ? deuda : 0)}\n`) +
+    ((d.deposito || 0) > 0 ? `Deposito: ${money(d.deposito || 0)} (se devuelve al traer el traje)\n` : '') +
     `\n${d.footer || `Entrega ${d.fechaInicio}  ·  Devolución ${d.fechaFin}`}\n\n` +
     `(Adjunto la imagen de la factura)`
   )

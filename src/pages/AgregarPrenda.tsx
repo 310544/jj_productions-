@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabase'
 import type { Categoria } from '../types'
 import {
   ArrowLeft, Camera, Image as PhotoIcon, CaretDown,
-  Scan, CurrencyDollar, FloppyDisk,
+  Scan, FloppyDisk,
 } from '@phosphor-icons/react'
 
 const TIPOS = [
@@ -34,7 +34,6 @@ export default function AgregarPrenda({ inPopup, onClose }: Props = {}) {
   const [tipo, setTipo] = useState('')
   const [codigo, setCodigo] = useState('')
   const [descripcion, setDescripcion] = useState('')
-  const [precio, setPrecio] = useState('')
   const [cantidad, setCantidad] = useState('1')
   const [categoria, setCategoria] = useState<Categoria | ''>('')
   const esAccesorio = categoria === 'Accesorios'
@@ -83,10 +82,6 @@ export default function AgregarPrenda({ inPopup, onClose }: Props = {}) {
       setError('Completa tipo, categoria y codigo')
       return
     }
-    if (precio.trim() && (isNaN(parseFloat(precio)) || parseFloat(precio) <= 0)) {
-      setError('Ingresa un precio valido')
-      return
-    }
 
     setSaving(true)
     setError(null)
@@ -131,7 +126,7 @@ export default function AgregarPrenda({ inPopup, onClose }: Props = {}) {
       nombre: `${tipo} - ${descripcion.trim()}`,
       imagen_url,
       estado: 'disponible',
-      precio: parseFloat(precio) || 0,
+      precio: 0, // los trajes no tienen precio fijo: se pone en cada factura
       categoria: categoria as Categoria,
       cantidad: esAccesorio ? Math.max(1, parseInt(cantidad) || 1) : 1,
     })
@@ -404,28 +399,6 @@ export default function AgregarPrenda({ inPopup, onClose }: Props = {}) {
             className="w-full rounded-[12px] px-4 py-3 text-base text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-accent/40"
             style={inputStyle}
           />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-text-secondary mb-1.5">
-            Precio de alquiler (opcional)
-          </label>
-          <div className="relative">
-            <CurrencyDollar
-              className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5"
-              style={{ color: 'var(--accent)' }}
-              aria-hidden="true"
-            />
-            <input
-              type="text"
-              inputMode="numeric"
-              value={precio ? Number(precio).toLocaleString('es-CO') : ''}
-              onChange={(e) => setPrecio(e.target.value.replace(/\D/g, ''))}
-              placeholder="50.000"
-              className="w-full rounded-[12px] pl-11 pr-4 py-3 text-base text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-accent/40"
-              style={inputStyle}
-            />
-          </div>
         </div>
 
         {/* Cantidad — solo para accesorios (stock por unidades) */}
