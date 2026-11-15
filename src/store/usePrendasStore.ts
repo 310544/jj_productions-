@@ -75,7 +75,8 @@ export const usePrendasStore = create<PrendasState>((set, get) => ({
       const mensaje = error.code === '23505'
         ? 'Ya existe una prenda con ese codigo. Usa otro codigo.'
         : error.message
-      set({ error: mensaje })
+      // No se guarda en el error global: ese es solo para fallos al cargar
+      // el inventario. El formulario muestra este mensaje por su cuenta.
       return { success: false, error: mensaje }
     }
 
