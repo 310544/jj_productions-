@@ -1,12 +1,13 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { usePrendasStore } from '../store/usePrendasStore'
 import { supabase } from '../lib/supabase'
-import { quitarFondo } from '../lib/quitarFondo'
+import { quitarFondo, aplicarZona, type Zona } from '../lib/quitarFondo'
+import RecorteManual from '../components/RecorteManual'
 import type { Categoria } from '../types'
 import {
   ArrowLeft, Camera, Image as PhotoIcon, CaretDown,
-  Scan, CurrencyDollar, FloppyDisk, MagicWand, CircleNotch,
+  Scan, CurrencyDollar, FloppyDisk, MagicWand, CircleNotch, Crop,
 } from '@phosphor-icons/react'
 
 const TIPOS = [
@@ -38,6 +39,11 @@ export default function AgregarPrenda({ inPopup, onClose }: Props = {}) {
   const [fondoBlanco, setFondoBlanco] = useState(true)
   const [procesando, setProcesando] = useState(false)
   const [progreso, setProgreso] = useState('')
+  // Ajuste manual del recorte
+  const [recorte, setRecorte] = useState<Blob | null>(null)
+  const [zona, setZona] = useState<Zona | null>(null)
+  const [ajustando, setAjustando] = useState(false)
+  const recorteUrl = useMemo(() => (recorte ? URL.createObjectURL(recorte) : null), [recorte])
   const [tipo, setTipo] = useState('')
   const [codigo, setCodigo] = useState('')
   const [descripcion, setDescripcion] = useState('')
@@ -67,15 +73,17 @@ export default function AgregarPrenda({ inPopup, onClose }: Props = {}) {
     setProgreso('Quitando fondo...')
     setError(null)
     try {
-      const limpia = await quitarFondo(file, (pct, etapa) => {
+      const res = await quitarFondo(file, (pct, etapa) => {
         setProgreso(
           etapa === 'descargando'
             ? `Preparando (solo la primera vez)... ${pct}%`
             : 'Quitando fondo...',
         )
       })
-      setProcesada(limpia)
-      mostrar(limpia)
+      setRecorte(res.recorte)
+      setZona(res.zona)
+      setProcesada(res.archivo)
+      mostrar(res.archivo)
     } catch (e) {
       console.error(e)
       mostrar(file)
@@ -90,6 +98,8 @@ export default function AgregarPrenda({ inPopup, onClose }: Props = {}) {
     if (!file) return
     setOriginal(file)
     setProcesada(null)
+    setRecorte(null)
+    setZona(null)
     if (fondoBlanco) {
       setPreview(URL.createObjectURL(file))
       await aplicarFondoBlanco(file)
@@ -109,6 +119,19 @@ export default function AgregarPrenda({ inPopup, onClose }: Props = {}) {
   }
 
   const esProcesada = !!imagen && imagen === procesada
+
+  async function aplicarAjuste(nuevaZona: Zona) {
+    if (!recorte) return
+    setAjustando(false)
+    try {
+      const archivo = await aplicarZona(recorte, nuevaZona, original?.name)
+      setZona(nuevaZona)
+      setProcesada(archivo)
+      mostrar(archivo)
+    } catch {
+      setError('No quedo ninguna prenda dentro del recuadro. Intenta de nuevo.')
+    }
+  }
 
   async function compressImage(file: File): Promise<Blob> {
     return new Promise((resolve, reject) => {
@@ -259,6 +282,18 @@ export default function AgregarPrenda({ inPopup, onClose }: Props = {}) {
             </div>
             <p className="text-sm font-semibold" style={{ color: 'var(--danger)' }}>Toca para agregar imagen</p>
           </div>
+        )}
+
+        {esProcesada && recorteUrl && !procesando && (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); setAjustando(true) }}
+            className="absolute bottom-3 right-3 flex items-center gap-1.5 px-3.5 py-2 rounded-full text-sm font-semibold text-white shadow-lg"
+            style={{ background: 'rgba(0,0,0,0.65)' }}
+          >
+            <Crop className="w-4 h-4" aria-hidden="true" />
+            Ajustar
+          </button>
         )}
 
         {procesando && (
@@ -562,6 +597,15 @@ export default function AgregarPrenda({ inPopup, onClose }: Props = {}) {
           </div>
         )}
       </div>
+
+      {ajustando && recorteUrl && zona && (
+        <RecorteManual
+          src={recorteUrl}
+          zonaInicial={zona}
+          onCancelar={() => setAjustando(false)}
+          onAplicar={aplicarAjuste}
+        />
+      )}
 
       {error && (
         <p className="text-sm text-center font-medium" style={{ color: 'var(--danger)' }}>
