@@ -1,13 +1,11 @@
-import { useState, useRef, useEffect, useMemo } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { usePrendasStore } from '../store/usePrendasStore'
 import { supabase } from '../lib/supabase'
-import { quitarFondo, aplicarZona, type Zona } from '../lib/quitarFondo'
-import RecorteManual from '../components/RecorteManual'
 import type { Categoria } from '../types'
 import {
   ArrowLeft, Camera, Image as PhotoIcon, CaretDown,
-  Scan, CurrencyDollar, FloppyDisk, MagicWand, CircleNotch, Crop,
+  Scan, CurrencyDollar, FloppyDisk,
 } from '@phosphor-icons/react'
 
 const TIPOS = [
@@ -33,17 +31,6 @@ export default function AgregarPrenda({ inPopup, onClose }: Props = {}) {
 
   const [imagen, setImagen] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
-  // Quitar fondo: guardamos la foto original y la procesada para poder alternar
-  const [original, setOriginal] = useState<File | null>(null)
-  const [procesada, setProcesada] = useState<File | null>(null)
-  const [fondoBlanco, setFondoBlanco] = useState(true)
-  const [procesando, setProcesando] = useState(false)
-  const [progreso, setProgreso] = useState('')
-  // Ajuste manual del recorte
-  const [recorte, setRecorte] = useState<Blob | null>(null)
-  const [zona, setZona] = useState<Zona | null>(null)
-  const [ajustando, setAjustando] = useState(false)
-  const recorteUrl = useMemo(() => (recorte ? URL.createObjectURL(recorte) : null), [recorte])
   const [tipo, setTipo] = useState('')
   const [codigo, setCodigo] = useState('')
   const [descripcion, setDescripcion] = useState('')
@@ -63,74 +50,10 @@ export default function AgregarPrenda({ inPopup, onClose }: Props = {}) {
     return () => document.removeEventListener('click', close)
   }, [openTipo, openCategoria])
 
-  function mostrar(file: File) {
+  function handleFile(file: File | null) {
+    if (!file) return
     setImagen(file)
     setPreview(URL.createObjectURL(file))
-  }
-
-  async function aplicarFondoBlanco(file: File) {
-    setProcesando(true)
-    setProgreso('Quitando fondo...')
-    setError(null)
-    try {
-      const res = await quitarFondo(file, (pct, etapa) => {
-        setProgreso(
-          etapa === 'descargando'
-            ? `Preparando (solo la primera vez)... ${pct}%`
-            : 'Quitando fondo...',
-        )
-      })
-      setRecorte(res.recorte)
-      setZona(res.zona)
-      setProcesada(res.archivo)
-      mostrar(res.archivo)
-    } catch (e) {
-      console.error(e)
-      mostrar(file)
-      setFondoBlanco(false)
-      setError('No se pudo quitar el fondo. Se usara la foto original.')
-    } finally {
-      setProcesando(false)
-    }
-  }
-
-  async function handleFile(file: File | null) {
-    if (!file) return
-    setOriginal(file)
-    setProcesada(null)
-    setRecorte(null)
-    setZona(null)
-    if (fondoBlanco) {
-      setPreview(URL.createObjectURL(file))
-      await aplicarFondoBlanco(file)
-    } else {
-      mostrar(file)
-    }
-  }
-
-  async function toggleFondoBlanco() {
-    if (procesando) return
-    const nuevo = !fondoBlanco
-    setFondoBlanco(nuevo)
-    if (!original) return
-    if (!nuevo) { mostrar(original); return }
-    if (procesada) { mostrar(procesada); return }
-    await aplicarFondoBlanco(original)
-  }
-
-  const esProcesada = !!imagen && imagen === procesada
-
-  async function aplicarAjuste(nuevaZona: Zona) {
-    if (!recorte) return
-    setAjustando(false)
-    try {
-      const archivo = await aplicarZona(recorte, nuevaZona, original?.name)
-      setZona(nuevaZona)
-      setProcesada(archivo)
-      mostrar(archivo)
-    } catch {
-      setError('No quedo ninguna prenda dentro del recuadro. Intenta de nuevo.')
-    }
   }
 
   async function compressImage(file: File): Promise<Blob> {
@@ -255,11 +178,11 @@ export default function AgregarPrenda({ inPopup, onClose }: Props = {}) {
       )}
 
       <div
-        onClick={() => { if (!procesando) fileInputRef.current?.click() }}
-        className="relative overflow-hidden border-2 border-dashed rounded-[16px] aspect-square flex flex-col items-center justify-center cursor-pointer transition-all"
+        onClick={() => fileInputRef.current?.click()}
+        className="border-2 border-dashed rounded-[16px] aspect-square flex flex-col items-center justify-center cursor-pointer transition-all"
         style={{
           borderColor: preview ? 'var(--accent-border)' : 'var(--danger)',
-          background: esProcesada ? '#FFFFFF' : 'transparent',
+          background: 'transparent',
           animation: preview ? 'none' : 'pulse-border 2s ease-in-out infinite',
         }}
       >
@@ -267,7 +190,7 @@ export default function AgregarPrenda({ inPopup, onClose }: Props = {}) {
           <img
             src={preview}
             alt="Vista previa"
-            className={`w-full h-full rounded-[16px] ${esProcesada ? 'object-contain' : 'object-cover'}`}
+            className="w-full h-full object-cover rounded-[16px]"
           />
         ) : (
           <div className="text-center p-6">
@@ -281,28 +204,6 @@ export default function AgregarPrenda({ inPopup, onClose }: Props = {}) {
               <Camera className="w-7 h-7" style={{ color: 'var(--danger)' }} aria-hidden="true" />
             </div>
             <p className="text-sm font-semibold" style={{ color: 'var(--danger)' }}>Toca para agregar imagen</p>
-          </div>
-        )}
-
-        {esProcesada && recorteUrl && !procesando && (
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); setAjustando(true) }}
-            className="absolute bottom-3 right-3 flex items-center gap-1.5 px-3.5 py-2 rounded-full text-sm font-semibold text-white shadow-lg"
-            style={{ background: 'rgba(0,0,0,0.65)' }}
-          >
-            <Crop className="w-4 h-4" aria-hidden="true" />
-            Ajustar
-          </button>
-        )}
-
-        {procesando && (
-          <div
-            className="absolute inset-0 flex flex-col items-center justify-center gap-3 rounded-[16px]"
-            style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(2px)' }}
-          >
-            <CircleNotch className="w-9 h-9 text-white animate-spin" aria-hidden="true" />
-            <p className="text-sm font-semibold text-white text-center px-4">{progreso}</p>
           </div>
         )}
 
@@ -347,46 +248,17 @@ export default function AgregarPrenda({ inPopup, onClose }: Props = {}) {
         </button>
       </div>
 
-      {/* Fondo blanco automatico */}
-      <button
-        type="button"
-        onClick={toggleFondoBlanco}
-        disabled={procesando}
-        role="switch"
-        aria-checked={fondoBlanco}
-        className="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-[12px] text-sm transition-all disabled:opacity-60"
-        style={{
-          background: 'var(--glass-strong)',
-          border: '1px solid var(--glass-border)',
-          color: 'var(--text-primary)',
-        }}
-      >
-        <span className="flex items-center gap-2 font-medium">
-          <MagicWand className="w-5 h-5" style={{ color: 'var(--accent)' }} aria-hidden="true" />
-          Fondo blanco automatico
-        </span>
-        <span
-          className="relative w-11 h-6 rounded-full transition-all shrink-0"
-          style={{ background: fondoBlanco ? 'var(--accent)' : 'var(--field-border)' }}
-        >
-          <span
-            className="absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all"
-            style={{ left: fondoBlanco ? '22px' : '2px' }}
-          />
-        </span>
-      </button>
-
       <input
         type="file"
         ref={fileInputRef}
-        onChange={(e) => { handleFile(e.target.files?.[0] ?? null); e.target.value = '' }}
+        onChange={(e) => handleFile(e.target.files?.[0] ?? null)}
         accept="image/*"
         className="hidden"
       />
       <input
         type="file"
         ref={cameraInputRef}
-        onChange={(e) => { handleFile(e.target.files?.[0] ?? null); e.target.value = '' }}
+        onChange={(e) => handleFile(e.target.files?.[0] ?? null)}
         accept="image/*"
         capture="environment"
         className="hidden"
@@ -598,15 +470,6 @@ export default function AgregarPrenda({ inPopup, onClose }: Props = {}) {
         )}
       </div>
 
-      {ajustando && recorteUrl && zona && (
-        <RecorteManual
-          src={recorteUrl}
-          zonaInicial={zona}
-          onCancelar={() => setAjustando(false)}
-          onAplicar={aplicarAjuste}
-        />
-      )}
-
       {error && (
         <p className="text-sm text-center font-medium" style={{ color: 'var(--danger)' }}>
           {error}
@@ -615,7 +478,7 @@ export default function AgregarPrenda({ inPopup, onClose }: Props = {}) {
 
       <button
         onClick={handleSave}
-        disabled={saving || procesando}
+        disabled={saving}
         className="w-full py-3.5 text-white font-semibold rounded-[14px] transition-all hover:brightness-110 disabled:opacity-50 flex items-center justify-center gap-2"
         style={{ background: 'var(--btn-primary)' }}
       >
