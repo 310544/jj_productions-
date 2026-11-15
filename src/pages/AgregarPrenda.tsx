@@ -145,6 +145,19 @@ export default function AgregarPrenda({ inPopup, onClose }: Props = {}) {
     setSaving(true)
     setError(null)
 
+    // Revisar que el codigo no exista ANTES de subir la foto
+    const { data: existente } = await supabase
+      .from('garments')
+      .select('id, nombre')
+      .eq('codigo', codigo.trim())
+      .maybeSingle()
+
+    if (existente) {
+      setError(`Ya existe una prenda con el codigo "${codigo.trim()}" (${existente.nombre}). Usa otro codigo.`)
+      setSaving(false)
+      return
+    }
+
     let imagen_url = ''
 
     if (imagen) {

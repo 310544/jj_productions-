@@ -72,8 +72,11 @@ export const usePrendasStore = create<PrendasState>((set, get) => ({
       .single()
 
     if (error) {
-      set({ error: error.message })
-      return { success: false, error: error.message }
+      const mensaje = error.code === '23505'
+        ? 'Ya existe una prenda con ese codigo. Usa otro codigo.'
+        : error.message
+      set({ error: mensaje })
+      return { success: false, error: mensaje }
     }
 
     set((state) => ({ prendas: [data, ...state.prendas] }))
