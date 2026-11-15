@@ -14,9 +14,11 @@ interface Props {
   placeholder?: string
   min?: string
   align?: 'left' | 'right'
+  /** Fechas (AAAA-MM-DD) en que las prendas ya están alquiladas: se pintan en rojo */
+  ocupadas?: Set<string>
 }
 
-export default function DatePicker({ value, onChange, label, placeholder = 'Seleccionar fecha', min }: Props) {
+export default function DatePicker({ value, onChange, label, placeholder = 'Seleccionar fecha', min, ocupadas }: Props) {
   const [open, setOpen] = useState(false)
   const [viewDate, setViewDate] = useState(() => value ? new Date(value + 'T00:00:00') : new Date())
   const ref = useRef<HTMLDivElement>(null)
@@ -151,6 +153,7 @@ export default function DatePicker({ value, onChange, label, placeholder = 'Sele
                   const selected = iso === value
                   const today = iso === todayStr
                   const disabled = isDisabled(day)
+                  const ocupada = !disabled && !!ocupadas?.has(iso)
 
                   return (
                     <button
@@ -160,8 +163,11 @@ export default function DatePicker({ value, onChange, label, placeholder = 'Sele
                       onClick={() => selectDay(day)}
                       className="w-8 h-8 flex items-center justify-center rounded-full text-xs font-medium transition-all"
                       style={{
-                        background: selected ? 'var(--accent)' : 'transparent',
-                        color: selected ? '#fff' : disabled ? 'var(--text-tertiary)' : 'var(--text-primary)',
+                        background: selected
+                          ? (ocupada ? '#DC2626' : 'var(--accent)')
+                          : ocupada ? 'rgba(220,38,38,0.14)' : 'transparent',
+                        color: selected ? '#fff' : disabled ? 'var(--text-tertiary)' : ocupada ? '#DC2626' : 'var(--text-primary)',
+                        fontWeight: ocupada ? 700 : undefined,
                         border: today && !selected ? '1px solid var(--accent)' : '1px solid transparent',
                         opacity: disabled ? 0.3 : 1,
                         cursor: disabled ? 'default' : 'pointer',
@@ -172,6 +178,13 @@ export default function DatePicker({ value, onChange, label, placeholder = 'Sele
                   )
                 })}
               </div>
+
+              {ocupadas && ocupadas.size > 0 && (
+                <p className="flex items-center gap-1.5 text-[11px] text-text-secondary mt-3">
+                  <span className="w-3 h-3 rounded-full" style={{ background: 'rgba(220,38,38,0.14)', border: '1px solid #DC2626' }} />
+                  Ya alquilado en esas fechas
+                </p>
+              )}
             </motion.div>
           </motion.div>
         )}

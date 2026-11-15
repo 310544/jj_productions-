@@ -14,6 +14,12 @@ import { useNavigate } from 'react-router-dom'
 
 const VENDEDORES: Vendedor[] = ['Jhoan Becerra', 'Karen', 'Barbara']
 
+// Fecha de hoy (hora local) en formato AAAA-MM-DD
+function hoyISO() {
+  const t = new Date()
+  return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`
+}
+
 interface GarmentSeleccionada {
   prenda: Prenda
   tipo: TipoItem
@@ -48,7 +54,7 @@ export default function Alquiler({ inPopup, onClose, editRentalId, onSaved }: Pr
   const [searchResults, setSearchResults] = useState<Prenda[]>([])
   const [showSearch, setShowSearch] = useState(false)
   const [allGarments, setAllGarments] = useState<Prenda[]>([])
-  const [fechaInicio, setFechaInicio] = useState(new Date().toISOString().split('T')[0])
+  const [fechaInicio, setFechaInicio] = useState(hoyISO())
   const [fechaFin, setFechaFin] = useState('')
   const [total, setTotal] = useState('')
   const [pagos, setPagos] = useState<PagoLocal[]>([])
@@ -155,6 +161,44 @@ export default function Alquiler({ inPopup, onClose, editRentalId, onSaved }: Pr
     document.addEventListener('click', close)
     return () => document.removeEventListener('click', close)
   }, [openVendedor, openEntrega])
+
+  // Fechas en que las prendas seleccionadas (en alquiler) ya están alquiladas:
+  // se pintan en rojo en el calendario
+  const [fechasOcupadas, setFechasOcupadas] = useState<Set<string>>(new Set())
+  const idsAlquiler = selectedGarments
+    .filter((i) => i.tipo === 'alquiler' && i.prenda.categoria !== 'Accesorios')
+    .map((i) => i.prenda.id)
+    .sort((a, b) => a - b)
+    .join(',')
+  useEffect(() => {
+    let cancelado = false
+    async function cargarOcupadas() {
+      const ids = idsAlquiler ? idsAlquiler.split(',').map(Number) : []
+      if (ids.length === 0) { setFechasOcupadas(new Set()); return }
+      let query = supabase
+        .from('rental_items')
+        .select('garment_id, rental_id, rentals!inner(fecha_inicio, fecha_fin, estado)')
+        .in('garment_id', ids)
+        .eq('rentals.estado', 'activo')
+        .gte('rentals.fecha_fin', hoyISO())
+      if (editRentalId) query = query.neq('rental_id', editRentalId)
+      const { data } = await query
+      const set = new Set<string>()
+      for (const item of data || []) {
+        const r = Array.isArray(item.rentals) ? item.rentals[0] : item.rentals
+        if (!r?.fecha_inicio || !r?.fecha_fin) continue
+        const d = new Date(r.fecha_inicio + 'T00:00:00')
+        const fin = new Date(r.fecha_fin + 'T00:00:00')
+        for (let n = 0; d <= fin && n < 400; n++) {
+          set.add(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`)
+          d.setDate(d.getDate() + 1)
+        }
+      }
+      if (!cancelado) setFechasOcupadas(set)
+    }
+    cargarOcupadas()
+    return () => { cancelado = true }
+  }, [idsAlquiler, editRentalId])
 
   // Revisar conflictos de fecha para alquileres
   useEffect(() => {
@@ -1176,6 +1220,8 @@ export default function Alquiler({ inPopup, onClose, editRentalId, onSaved }: Pr
               value={fechaInicio}
               onChange={setFechaInicio}
               placeholder="Entrega"
+              min={hoyISO()}
+              ocupadas={fechasOcupadas}
             />
           </div>
           <div className="min-w-0">
@@ -1184,7 +1230,8 @@ export default function Alquiler({ inPopup, onClose, editRentalId, onSaved }: Pr
               value={fechaFin}
               onChange={setFechaFin}
               placeholder="Devolucion"
-              min={fechaInicio}
+              min={fechaInicio && fechaInicio > hoyISO() ? fechaInicio : hoyISO()}
+              ocupadas={fechasOcupadas}
               align="right"
             />
           </div>
