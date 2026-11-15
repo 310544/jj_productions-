@@ -34,6 +34,7 @@ export interface ComprobanteData {
   etiquetaInicio?: string // default "Fecha de entrega"
   etiquetaFin?: string // default "Fecha de devolución"
   footer?: string // nota opcional que se muestra bajo los totales
+  fechaRetiro?: string // día en que el cliente reclama el traje (default: fechaInicio)
   subtitulo?: string // texto bajo la marca (default: "Alquiler & Venta de Trajes")
   sinPoliticas?: boolean // true = no imprimir las políticas del alquiler (ej. trajes a la medida)
 }
@@ -579,26 +580,17 @@ function lineaFechas(d: ComprobanteData): string {
   return `${d.etiquetaInicio || 'Entrega'} ${fechaLarga(d.fechaInicio)}  ·  ${d.etiquetaFin || 'Devolución'} ${fechaLarga(d.fechaFin)}`
 }
 
+// Mensaje de WhatsApp: saludo corto y cálido. El detalle va en la imagen de la factura.
 function construirMensaje(d: ComprobanteData): string {
-  const deuda = d.total - d.abonado
-  const pagado = deuda <= 0
-  const itemsText = d.prendas
-    .map((item) => `• ${item.tipo === 'alquiler' ? 'ALQ' : 'VTA'} ${item.codigo} - ${item.nombre}`)
-    .join('%0A')
+  const nombre = d.cliente.trim().split(/\s+/)[0] || ''
+  const nombreBonito = nombre ? nombre.charAt(0).toUpperCase() + nombre.slice(1).toLowerCase() : ''
+  const retiro = d.fechaRetiro || d.fechaInicio
   return (
-    `*JJ PRODUCTION*%0A_${d.subtitulo || 'Alquiler & Venta de Trajes'}_%0A%0A` +
-    `*Factura ${d.codigo}*%0A` +
-    `━━━━━━━━━━━━━%0A` +
-    `*Cliente:* ${d.cliente.trim()}%0A` +
-    (d.cedula.trim() ? `*Cédula:* ${d.cedula.trim()}%0A` : '') +
-    (d.vendedor ? `*Vendedor:* ${d.vendedor}%0A` : '') +
-    `%0A*Prendas:*%0A${itemsText}%0A%0A` +
-    `━━━━━━━━━━━━━%0A` +
-    `Total:  *${money(d.total || 0)}*%0A` +
-    `Abonado:  ${money(d.abonado || 0)}%0A` +
-    (pagado ? `*✅ PAGADO*` : `*Saldo pendiente:  ${money(deuda > 0 ? deuda : 0)}*`) +
-    ((d.deposito || 0) > 0 ? `%0ADepósito:  *${money(d.deposito || 0)}* _(se devuelve al traer el traje)_` : '') +
-    `%0A%0A_${d.footer || lineaFechas(d)}_`
+    `¡Hola${nombreBonito ? ` ${nombreBonito}` : ''}! 👋%0A%0A` +
+    `Te damos la bienvenida a *JJ Production* y gracias por confiar en nosotros. ✨%0A%0A` +
+    `Aquí te enviamos tu factura *N° ${d.codigo}*. ` +
+    `Preséntala para reclamar tu traje${retiro ? ` el *${fechaLarga(retiro)}*` : ''}.%0A%0A` +
+    `Cualquier duda, con gusto te atendemos por este medio. ¡Que disfrutes tu evento! 🎩`
   )
 }
 

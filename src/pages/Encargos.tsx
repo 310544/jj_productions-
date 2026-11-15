@@ -583,6 +583,7 @@ function DetalleEncargoModal({ encargo, onClose, onChange, onCloseAndRefresh }: 
       subtitulo: 'Traje a la medida',
       etiquetaInicio: 'Fecha de pedido',
       etiquetaFin: 'Fecha de entrega',
+      fechaRetiro: enc.fecha_entrega,
       sinPoliticas: true, // las politicas son del alquiler, no de trajes a la medida
     }
   }
